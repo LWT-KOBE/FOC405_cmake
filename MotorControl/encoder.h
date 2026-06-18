@@ -20,6 +20,7 @@ typedef enum
 	MODE_SPI_MA730,
 	MODE_SPI_TLE5012B,
 	MODE_SPI_MT6835,
+	MODE_SPI_KTH7112,
 } ENCODER_enum;
 
 typedef enum {
@@ -64,6 +65,8 @@ typedef struct
 
 extern  ENCODER_CONFIG   encoder_config;
 
+extern uint32_t pos_val;
+
 extern  float  pos_estimate_;
 extern  float  vel_estimate_;
 extern  float  pos_circular_;
@@ -73,6 +76,8 @@ bool run_offset_calibration(void);
 void sample_now(void);
 bool encoder_update(void);
 HALL_State HALL_GETState(void);
+uint16_t KTH71_ReadAngle(void);
+uint16_t KTH7112_ReadAngle(void);
 /****************************************************************************/
 
 #endif

@@ -84,6 +84,13 @@ extern  float input_pos_;
 extern  float input_torque_;
 extern  float torque_output_;
 extern  bool input_pos_updated_;
+
+extern float pos_setpoint_; // [turns]
+extern float torque_setpoint_; // [turn/s]
+
+extern float mit_target_velocity_,mit_target_pos_, mit_target_torque_; // MIT模式下的目标速度
+extern float mit_kp, mit_kd; // MIT模式下的控制参数
+
 /****************************************************************************/
 void controller_config_default(void);
 void controller_para_init(void);

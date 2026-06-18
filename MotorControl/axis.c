@@ -42,9 +42,14 @@ bool start_closed_loop_control(void)
 bool run_closed_loop_control_loop(void)
 {
 	start_closed_loop_control();
-	while (is_armed_)
-	 //{delay_us(1000);}
-	{delay_us(1000);}
+	// while (is_armed_)
+	//  //{delay_us(1000);}
+	// {delay_us(1000);}
+
+	while (is_armed_  &&  (current_state_ == AXIS_STATE_CLOSED_LOOP_CONTROL))
+	{
+		delay_us(1000);
+	}
 
 	disarm();
 	return 0;
@@ -103,6 +108,17 @@ void run_state_machine_loop(void)
 		} break;
 		
 		case AXIS_STATE_IDLE: {
+				input_pos_ = 0;   //清零输入值
+				input_vel_ = 0;
+				input_torque_ = 0;
+				mit_kd = 0;
+				mit_kp = 0.05;
+				mit_target_pos_ = 0;
+				mit_target_velocity_ = 0;
+				mit_target_torque_ = 0;
+				controller_reset();
+				disarm();
+				// current_state_ = AXIS_STATE_IDLE;
 		} break;
 		
 		case AXIS_STATE_UNDEFINED: {

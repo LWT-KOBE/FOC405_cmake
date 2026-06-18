@@ -380,6 +380,57 @@ void ODSetVel_gainsData(CanRxMsg* CanRevData) {
 	ctrl_config.vel_integrator_gain = vel_integrator_gain.float_temp;
 }
 
+void OD_MSG_SET_CONTROLLER_MODES(CanRxMsg* CanRevData)
+{
+	switch (CanRevData->Data[0])
+	{
+		case 1:
+			// 位置控制模式
+			ctrl_config.control_mode = CONTROL_MODE_POSITION_CONTROL;
+			// 梯形轨迹模式
+			ctrl_config.input_mode = INPUT_MODE_TRAP_TRAJ;
+			break;
+		case 2:
+			//位置滤波器模式
+			ctrl_config.control_mode = CONTROL_MODE_POSITION_CONTROL;
+			ctrl_config.input_mode = INPUT_MODE_POS_FILTER;
+			break;
+		case 3:
+			//位置直通模式
+			ctrl_config.control_mode = CONTROL_MODE_POSITION_CONTROL;
+			ctrl_config.input_mode = INPUT_MODE_PASSTHROUGH;
+			break;
+		case 4:
+			//速度梯形模式
+			ctrl_config.control_mode = CONTROL_MODE_VELOCITY_CONTROL;
+			ctrl_config.input_mode = INPUT_MODE_VEL_RAMP;
+			break;
+		case 5:
+			//速度直通模式
+			ctrl_config.control_mode = CONTROL_MODE_VELOCITY_CONTROL;
+			ctrl_config.input_mode = INPUT_MODE_PASSTHROUGH;
+			break;
+		case 6:
+			//力矩梯形模式
+			ctrl_config.control_mode = CONTROL_MODE_TORQUE_CONTROL;
+			ctrl_config.input_mode = INPUT_MODE_TORQUE_RAMP;
+			break;
+		case 7:
+			//力矩直通模式
+			ctrl_config.control_mode = CONTROL_MODE_TORQUE_CONTROL;
+			ctrl_config.input_mode = INPUT_MODE_PASSTHROUGH;
+			break;
+		case 8:
+			//MIT模式
+			ctrl_config.control_mode = CONTROL_MODE_TORQUE_CONTROL;
+			ctrl_config.input_mode = INPUT_MODE_MIT;
+			break;
+		default:
+			ctrl_config.input_mode = INPUT_MODE_INACTIVE;
+		    break;
+	}
+}
+
 void OD_SET_INPUT_POS(CanRxMsg* CanRevData) {
 	// 将CAN数据转换为float（假设数据是小端序）
     float new_pos;
@@ -442,6 +493,11 @@ void OD_SET_INPUT_LI(CanRxMsg* CanRevData) {
 	input_torque_ = new_cur;
 }
 
+void OD_MSG_SET_AXIS_REQUESTED_STATE(CanRxMsg* CanRevData)
+{
+	current_state_ = CanRevData->Data[0];
+}
+
 u8 CAN1_Send_Msg(u8* msg,u8 len)
 {
 	u8 mbox;
@@ -491,61 +547,61 @@ static float uint_to_float(int x_int, float x_min, float x_max, int bits)
 }
 
 
-// // 从CAN数据包解析控制命令的函数
-// // 参数：
-// //   phandle - CAN处理器句柄，用于存储解析后的控制命令
-// //   cmd_data - 指向CAN数据包的指针（8字节数组）
-// static void get_control_cmd(CAN_Handler_t *phandle, uint8_t *cmd_data)
-// {
-//     // ==============================================
-//     // 1. 从8字节CAN数据中解析出各个整型参数
-//     // ==============================================
+// 从CAN数据包解析控制命令的函数
+// 参数：
+//   phandle - CAN处理器句柄，用于存储解析后的控制命令
+//   cmd_data - 指向CAN数据包的指针（8字节数组）
+static void set_mit_control_cmd(CanRxMsg* CanRevData)
+{
+    // ==============================================
+    // 1. 从8字节CAN数据中解析出各个整型参数
+    // ==============================================
 
-//     // 解析位置命令p：使用前2个字节（16位）
-//     // cmd_data[0]是高8位，cmd_data[1]是低8位
-//     // 示例：cmd_data[0]=0x12, cmd_data[1]=0x34 → p_int = 0x1234
-//     int p_int = (cmd_data[0] << 8) | cmd_data[1];
+    // 解析位置命令p：使用前2个字节（16位）
+    // cmd_data[0]是高8位，cmd_data[1]是低8位
+    // 示例：cmd_data[0]=0x12, cmd_data[1]=0x34 → p_int = 0x1234
+    int p_int = (CanRevData->Data[0] << 8) | CanRevData->Data[1];
 
-//     // 解析速度命令v：使用第2字节的低4位和第3字节的高4位（共12位）
-//     // cmd_data[2]的高4位是v的高4位，cmd_data[3]的高4位是v的低4位
-//     // 示例：cmd_data[2]=0xAB, cmd_data[3]=0xCD → v_int = (0xAB0) | (0xC) = 0xABC
-//     int v_int = (cmd_data[2] << 4) | (cmd_data[3] >> 4);
+    // 解析速度命令v：使用第2字节的低4位和第3字节的高4位（共12位）
+    // cmd_data[2]的高4位是v的高4位，cmd_data[3]的高4位是v的低4位
+    // 示例：cmd_data[2]=0xAB, cmd_data[3]=0xCD → v_int = (0xAB0) | (0xC) = 0xABC
+    int v_int = (CanRevData->Data[2] << 4) | (CanRevData->Data[3] >> 4);
 
-//     // 解析比例系数kp：使用第3字节的低4位和第4字节（共12位）
-//     // cmd_data[3]的低4位是kp的高4位，cmd_data[4]是kp的低8位
-//     // 示例：cmd_data[3]=0xCD, cmd_data[4]=0xEF → kp_int = (0xD00) | 0xEF = 0xDEF
-//     int kp_int = ((cmd_data[3] & 0xF) << 8) | cmd_data[4];
+    // 解析比例系数kp：使用第3字节的低4位和第4字节（共12位）
+    // cmd_data[3]的低4位是kp的高4位，cmd_data[4]是kp的低8位
+    // 示例：cmd_data[3]=0xCD, cmd_data[4]=0xEF → kp_int = (0xD00) | 0xEF = 0xDEF
+    int kp_int = ((CanRevData->Data[3] & 0xF) << 8) | CanRevData->Data[4];
 
-//     // 解析微分系数kd：使用第5字节和第6字节的高4位（共12位）
-//     // cmd_data[5]是kd的高8位，cmd_data[6]的高4位是kd的低4位
-//     // 示例：cmd_data[5]=0x12, cmd_data[6]=0x34 → kd_int = (0x120) | (0x3) = 0x123
-//     int kd_int = (cmd_data[5] << 4) | (cmd_data[6] >> 4);
+    // 解析微分系数kd：使用第5字节和第6字节的高4位（共12位）
+    // cmd_data[5]是kd的高8位，cmd_data[6]的高4位是kd的低4位
+    // 示例：cmd_data[5]=0x12, cmd_data[6]=0x34 → kd_int = (0x120) | (0x3) = 0x123
+    int kd_int = (CanRevData->Data[5] << 4) | (CanRevData->Data[6] >> 4);
 
-//     // 解析扭矩命令t：使用第6字节的低4位和第7字节（共12位）
-//     // cmd_data[6]的低4位是t的高4位，cmd_data[7]是t的低8位
-//     // 示例：cmd_data[6]=0x34, cmd_data[7]=0x56 → t_int = (0x400) | 0x56 = 0x456
-//     int t_int = ((cmd_data[6] & 0xF) << 8) | cmd_data[7];
+    // 解析扭矩命令t：使用第6字节的低4位和第7字节（共12位）
+    // cmd_data[6]的低4位是t的高4位，cmd_data[7]是t的低8位
+    // 示例：cmd_data[6]=0x34, cmd_data[7]=0x56 → t_int = (0x400) | 0x56 = 0x456
+    int t_int = ((CanRevData->Data[6] & 0xF) << 8) | CanRevData->Data[7];
 
-//     // ==============================================
-//     // 2. 将整数转换为实际的物理量浮点值
-//     // ==============================================
+    // ==============================================
+    // 2. 将整数转换为实际的物理量浮点值
+    // ==============================================
 
-//     // 转换位置命令：16位整数 → 浮点位置值（单位：弧度或度）
-//     // uint_to_float参数：整数，最小值，最大值，位数
-//     phandle->cmd_p_target = uint_to_float(p_int, P_MIN, P_MAX, 16);
+    // 转换位置命令：16位整数 → 浮点位置值（单位：弧度或度）
+    // uint_to_float参数：整数，最小值，最大值，位数
+    mit_target_pos_ = uint_to_float(p_int, -20000, 20000, 16);
 
-//     // 转换速度命令：12位整数 → 浮点速度值（单位：rad/s或RPM）
-//     phandle->cmd_v_target = uint_to_float(v_int, V_MIN, V_MAX, 12);
+    // 转换速度命令：12位整数 → 浮点速度值（单位：rad/s或RPM）
+    mit_target_velocity_ = uint_to_float(v_int, -2000, 2000, 12);
 
-//     // 转换比例系数：12位整数 → 浮点比例增益
-//     phandle->cmd_kp = uint_to_float(kp_int, KP_MIN, KP_MAX, 12);
+    // 转换比例系数：12位整数 → 浮点比例增益
+    mit_kp = uint_to_float(kp_int, -200, 200, 12);
 
-//     // 转换微分系数：12位整数 → 浮点微分增益
-//     phandle->cmd_kd = uint_to_float(kd_int, KD_MIN, KD_MAX, 12);
+    // 转换微分系数：12位整数 → 浮点微分增益
+    mit_kd = uint_to_float(kd_int, -200, 200, 12);
 
-//     // 转换扭矩命令：12位整数 → 浮点扭矩值（单位：Nm）
-//     phandle->cmd_t_target = uint_to_float(t_int, TOR_MIN, TOR_MAX, 12);
-// }
+    // 转换扭矩命令：12位整数 → 浮点扭矩值（单位：Nm）
+    mit_target_torque_ = uint_to_float(t_int, -20, 20, 12);
+}
 
 
 CanRxMsg can1_rx_msg;
@@ -597,32 +653,32 @@ void CAN1_RX0_IRQHandler(void){
             			break;
 
 					case MSG_GET_ENCODER_ERROR:
-						
+
 						break;
 
 					case MSG_GET_SENSORLESS_ERROR:
-						
+
 						break;
 
 					case MSG_SET_AXIS_NODE_ID:
-						
+
 						break;
 
 					case MSG_SET_AXIS_REQUESTED_STATE:
 						// 设置轴请求状态
-
+						OD_MSG_SET_AXIS_REQUESTED_STATE(&can1_rx_msg);
 						break;
 
 					case MSG_SET_AXIS_STARTUP_CONFIG:
-						
+
 						break;
 
 					case MSG_GET_ENCODER_ESTIMATES:
-						
+
 						break;
 
 					case MSG_GET_ENCODER_COUNT:
-						
+
 						break;
 
 					case MSG_SET_INPUT_POS:
@@ -642,19 +698,19 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_SET_CONTROLLER_MODES:
 						// 设置控制模式
-						
+						OD_MSG_SET_CONTROLLER_MODES(&can1_rx_msg);
 						break;
 
 					case MSG_SET_LIMITS:
-						
+
 						break;
 
 					case MSG_START_ANTICOGGING:
-						
+
 						break;
 
 					case MSG_SET_TRAJ_INERTIA:
-						
+
 						break;
 
 					case MSG_SET_TRAJ_ACCEL_LIMITS:
@@ -669,9 +725,9 @@ void CAN1_RX0_IRQHandler(void){
 						// 获取电机电流
 						break;
 
-					case MSG_GET_SENSORLESS_ESTIMATES:
+					case MSG_SET_MIT_CONTROL:
 						// 获取无传感器估计值
-
+						set_mit_control_cmd(&can1_rx_msg);
 						break;
 
 					case MSG_RESET_ODRIVE:
@@ -697,7 +753,7 @@ void CAN1_RX0_IRQHandler(void){
 						// 设置速度环增益
 						ODSetVel_gainsData(&can1_rx_msg);
 						break;
-					
+
 
 					//新增
 					// case MSG_GET_TEMP:
@@ -710,11 +766,11 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_GET_POS_GAIN:
-						
+
 						break;
 
 					case MSG_GET_VEL_GAINS:
-						
+
 						break;
 
 
@@ -725,5 +781,3 @@ void CAN1_RX0_IRQHandler(void){
 
 	}
 }
-
-

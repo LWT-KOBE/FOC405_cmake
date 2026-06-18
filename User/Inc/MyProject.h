@@ -98,30 +98,39 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 //#define VBUS_S_DIVIDER_RATIO   18.73f    //电源分压电阻2.2k+39k
 #define VBUS_S_DIVIDER_RATIO   19.0f    //电源分压电阻1k+18k
 #define SHUNT_RESISTANCE       0.002f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
+// #define SHUNT_RESISTANCE       0.001f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
+// #define SHUNT_RESISTANCE       0.005f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
 #define PHASE_CURRENT_GAIN     20.0f     //电流采样运放倍数，20倍
 /****************************************************************************/
 //更改参数，烧写代码前请先清除flash中保存的参数（如果之前保存过的话）
 //电机配置参数，根据电机型号选择
 #define  MOTOR_type                 MOTOR_TYPE_HIGH_CURRENT   //MOTOR_TYPE_GIMBAL //MOTOR_TYPE_HIGH_CURRENT
-#define  MOTOR_pole_pairs                          14    //电机极对数
-#define  MOTOR_calibration_current                 2    //校准电流
-#define  MOTOR_resistance_calib_max_voltage        6    //校准限制电压
+#define  MOTOR_pole_pairs                          7    //电机极对数
+#define  MOTOR_calibration_current                 3    //校准电流
+#define  MOTOR_resistance_calib_max_voltage        1    //校准限制电压
+
+// #define  MOTOR_calibration_current                 4    //校准电流
+// #define  MOTOR_resistance_calib_max_voltage        2    //校准限制电压
 #define  MOTOR_current_lim                        30    //电机最大运行电流
 
 //MT6701采用三线SPI:接CS、SCLK、MISO；不需要接MOSI引脚。
-#define  ENCODER_mode        MODE_SPI_AS5047P    //编码器类型，共6种:MODE_INCREMENTAL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
-#define  ENCODER_cpr                  16384      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,MT6835=2097152,MODE_INCREMENTAL=4000,
+// #define  ENCODER_mode        MODE_SPI_AS5047P    //编码器类型，共6种:MODE_INCREMENTAL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
+// #define  ENCODER_cpr                  16384      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,KTH7112=65536,MT6835=2097152,MODE_INCREMENTAL=4000,
+// #define  ENCODER_bandwidth             1000      //默认1000，hall电机的cpr比较小，可设置为100
+
+#define  ENCODER_mode        MODE_SPI_KTH7112    //编码器类型，共6种:MODE_INCREMENTAL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
+#define  ENCODER_cpr                  65536      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,KTH7112=65536,MT6835=2097152,MODE_INCREMENTAL=4000,
 #define  ENCODER_bandwidth             1000      //默认1000，hall电机的cpr比较小，可设置为100
 
 //控制模式，以下参数请熟练官方ODrive操作后再设置，参数的意义和大小与odrivetool中的设置一致
-#define  CONTROL_mode        CONTROL_MODE_POSITION_CONTROL  //控制模式:CONTROL_MODE_VOLTAGE_CONTROL,CONTROL_MODE_TORQUE_CONTROL,CONTROL_MODE_VELOCITY_CONTROL,CONTROL_MODE_POSITION_CONTROL
-#define  INPUT_mode           INPUT_MODE_TRAP_TRAJ          //输入模式:INPUT_MODE_INACTIVE,INPUT_MODE_PASSTHROUGH,INPUT_MODE_VEL_RAMP,INPUT_MODE_TORQUE_RAMP,INPUT_MODE_POS_FILTER,INPUT_MODE_TRAP_TRAJ,INPUT_MODE_TUNING
+#define  CONTROL_mode        CONTROL_MODE_VELOCITY_CONTROL  //控制模式:CONTROL_MODE_VOLTAGE_CONTROL,CONTROL_MODE_TORQUE_CONTROL,CONTROL_MODE_VELOCITY_CONTROL,CONTROL_MODE_POSITION_CONTROL
+#define  INPUT_mode           INPUT_MODE_VEL_RAMP          //输入模式:INPUT_MODE_INACTIVE,INPUT_MODE_PASSTHROUGH,INPUT_MODE_VEL_RAMP,INPUT_MODE_TORQUE_RAMP,INPUT_MODE_POS_FILTER,INPUT_MODE_TRAP_TRAJ,INPUT_MODE_TUNING
 #define  TORQUE_ramp_rate                0.1f               //力矩爬升率，力矩模式起作用
 #define  VELOCITY_ramp_rate              200                 //加速度，速度模式起作用
 #define  POSITION_P                      20                 //位置P参数
 #define  VELOCITY_P                      0.04f              //速度P参数
-#define  VELOCITY_I                      0.5f               //速度I参数
-#define  VELOCITY_limit                  50                 //最大速度限制，力矩模式超过限速力矩会下降
+#define  VELOCITY_I                      0.1f               //速度I参数
+#define  VELOCITY_limit                  40                 //最大速度限制，力矩模式超过限速力矩会下降
 #define  TRAPTraj_vel_limit              40     //梯形轨迹速度限制
 #define  TRAPTraj_accel_limit            20     //梯形轨迹加速加速度
 #define  TRAPTraj_decel_limit            20     //梯形轨迹减速加速度

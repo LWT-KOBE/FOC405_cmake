@@ -52,7 +52,7 @@ typedef  enum {
 		MSG_SET_TRAJ_ACCEL_LIMITS = 0x012,           // 设置轨迹加速度限制
 		MSG_SET_TRAJ_INERTIA = 0x013,                // 设置轨迹惯性
 		MSG_GET_IQ = 0x014,                          // 获取电流
-		MSG_GET_SENSORLESS_ESTIMATES = 0x015,        // 获取无传感器估计值
+		MSG_SET_MIT_CONTROL = 0x015,        // 获取无传感器估计值
 		MSG_GET_BUS_VOLTAGE_CURRENT = 0x016,         // 获取母线电压和电流
 		MSG_CLEAR_ERRORS = 0x017,                    // 清除错误
 		
@@ -168,9 +168,8 @@ void OdriveSendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN, uint8_
 void can_SendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint8_t len,CANSendStruct_t* CanSendData);
 u8 CAN1_Send_Msg(u8* msg,u8 len);
 void can_SendFloatData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint8_t len,float data,CANSendStruct_t* CanSendData);
-
+void CANSendData_2(CAN_TypeDef *CANx, uint32_t ID_CAN,uint8_t len,float data1,float data2,CANSendStruct_t* CanSendData);
 
 void OD_CANSendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN,uint8_t len,float data,CANSendStruct_t* CanSendData);
 void OD_CANSendData_2(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN,uint8_t len,float data1,float data2,CANSendStruct_t* CanSendData);
 #endif
-

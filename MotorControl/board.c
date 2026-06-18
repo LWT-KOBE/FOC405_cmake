@@ -12,6 +12,7 @@ RTT_MSG_U1I1 rtt_JsMsg,rtt_JsMsg2;
 
 /****************************************************************************/
 #define  CURRENT_SENSE_MIN_VOLT  0.3f
+// #define  CURRENT_SENSE_MIN_VOLT  0.0f
 #define  CURRENT_SENSE_MAX_VOLT  3.0f
 #define  CURRENT_ADC_LOWER_BOUND  (uint32_t)((float)(1 << 12) * CURRENT_SENSE_MIN_VOLT / 3.3f)
 #define  CURRENT_ADC_UPPER_BOUND  (uint32_t)((float)(1 << 12) * CURRENT_SENSE_MAX_VOLT / 3.3f)
@@ -40,17 +41,41 @@ void vbus_sense_adc_cb(uint32_t adc_value)
 	vbus_voltage = adc_value * voltage_scale;
 }
 /****************************************************************************/
+uint16_t ib_val,ic_val;
 //在TIM1的更新中断函数中被调用
 uint8_t fetch_and_reset_adcs(Iph_ABC_t *current)
 {
 	uint8_t all_adcs_done = (((ADC1->SR & ADC_SR_JEOC) == ADC_SR_JEOC) && ((ADC2->SR & ADC_SR_JEOC) == ADC_SR_JEOC) && ((ADC3->SR & ADC_SR_JEOC) == ADC_SR_JEOC));
-  if(!all_adcs_done)return 0;
-	
+	if(!all_adcs_done)return 0;
+
 	vbus_sense_adc_cb(ADC1->JDR1);
-	current->phB = phase_current_from_adcval(ADC2->JDR1);
-	current->phC = phase_current_from_adcval(ADC3->JDR1);
+	//
+	// if (current_state_ == AXIS_STATE_MOTOR_CALIBRATION || current_state_ == AXIS_STATE_ENCODER_OFFSET_CALIBRATION)
+	// {
+	// 	current->phB = -phase_current_from_adcval(ADC2->JDR1);
+	// 	current->phC = -phase_current_from_adcval(ADC3->JDR1);
+	// 	current->phA = -current->phB - current->phC;
+	// }else
+	// {
+	// 	current->phB = phase_current_from_adcval(ADC2->JDR1);
+	// 	current->phC = phase_current_from_adcval(ADC3->JDR1);
+	// 	current->phA = -current->phB - current->phC;
+	// }
+	// current->phB = phase_current_from_adcval(ADC2->JDR1);
+	// current->phC = phase_current_from_adcval(ADC3->JDR1);
+
+	// current->phB = -phase_current_from_adcval(ADC2->JDR1);
+	// current->phC = -phase_current_from_adcval(ADC3->JDR1);
+	// current->phA = current->phB + current->phC;
+
+	// 修改电流方向相反
+	current->phB = -phase_current_from_adcval(ADC2->JDR1);
+	current->phC = -phase_current_from_adcval(ADC3->JDR1);
 	current->phA = -current->phB - current->phC;
-	
+
+	ib_val = ADC2->JDR1;
+	ic_val = ADC3->JDR1;
+
 	ADC1->SR = ~(ADC_SR_JEOC);
 	ADC2->SR = ~(ADC_SR_JEOC | ADC_SR_OVR);
 	ADC3->SR = ~(ADC_SR_JEOC | ADC_SR_OVR);
@@ -77,6 +102,9 @@ void TIM1_UP_TIM10_IRQHandler(void)
 //		LED_blink;
 //	}
 	// Scheduler_Tick_Handler(); // 调度器滴答处理函数，每625us调用一次
+
+	// OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,pos_estimate_,vel_estimate_,&ODSendData);
+	// OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_IQ,8,Idq_setpoint_.q,Iq_measured,&ODSendData);
 
 	uint8_t counting_down = TIM1->CR1 & TIM_CR1_DIR;
 	

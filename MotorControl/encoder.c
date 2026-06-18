@@ -59,6 +59,189 @@ void update_pll_gains(void)
 }
 /*****************************************************************************/
 
+/******************************************************************************/
+/* KTH7112 CRC8 Table (matches HAL reference implementation) */
+static const uint8_t CRC8Table[256] = {
+	0x00, 0x07, 0x0e, 0x09, 0x1c, 0x1b, 0x12, 0x15, 0x38, 0x3f, 0x36, 0x31, 0x24, 0x23, 0x2a, 0x2d,
+	0x70, 0x77, 0x7e, 0x79, 0x6c, 0x6b, 0x62, 0x65, 0x48, 0x4f, 0x46, 0x41, 0x54, 0x53, 0x5a, 0x5d,
+	0xe0, 0xe7, 0xee, 0xe9, 0xfc, 0xfb, 0xf2, 0xf5, 0xd8, 0xdf, 0xd6, 0xd1, 0xc4, 0xc3, 0xca, 0xcd,
+	0x90, 0x97, 0x9e, 0x99, 0x8c, 0x8b, 0x82, 0x85, 0xa8, 0xaf, 0xa6, 0xa1, 0xb4, 0xb3, 0xba, 0xbd,
+	0xc7, 0xc0, 0xc9, 0xce, 0xdb, 0xdc, 0xd5, 0xd2, 0xff, 0xf8, 0xf1, 0xf6, 0xe3, 0xe4, 0xed, 0xea,
+	0xb7, 0xb0, 0xb9, 0xbe, 0xab, 0xac, 0xa5, 0xa2, 0x8f, 0x88, 0x81, 0x86, 0x93, 0x94, 0x9d, 0x9a,
+	0x27, 0x20, 0x29, 0x2e, 0x3b, 0x3c, 0x35, 0x32, 0x1f, 0x18, 0x11, 0x16, 0x03, 0x04, 0x0d, 0x0a,
+	0x57, 0x50, 0x59, 0x5e, 0x4b, 0x4c, 0x45, 0x42, 0x6f, 0x68, 0x61, 0x66, 0x73, 0x74, 0x7d, 0x7a,
+	0x89, 0x8e, 0x87, 0x80, 0x95, 0x92, 0x9b, 0x9c, 0xb1, 0xb6, 0xbf, 0xb8, 0xad, 0xaa, 0xa3, 0xa4,
+	0xf9, 0xfe, 0xf7, 0xf0, 0xe5, 0xe2, 0xeb, 0xec, 0xc1, 0xc6, 0xcf, 0xc8, 0xdd, 0xda, 0xd3, 0xd4,
+	0x69, 0x6e, 0x67, 0x60, 0x75, 0x72, 0x7b, 0x7c, 0x51, 0x56, 0x5f, 0x58, 0x4d, 0x4a, 0x43, 0x44,
+	0x19, 0x1e, 0x17, 0x10, 0x05, 0x02, 0x0b, 0x0c, 0x21, 0x26, 0x2f, 0x28, 0x3d, 0x3a, 0x33, 0x34,
+	0x4e, 0x49, 0x40, 0x47, 0x52, 0x55, 0x5c, 0x5b, 0x76, 0x71, 0x78, 0x7f, 0x6a, 0x6d, 0x64, 0x63,
+	0x3e, 0x39, 0x30, 0x37, 0x22, 0x25, 0x2c, 0x2b, 0x06, 0x01, 0x08, 0x0f, 0x1a, 0x1d, 0x14, 0x13,
+	0xae, 0xa9, 0xa0, 0xa7, 0xb2, 0xb5, 0xbc, 0xbb, 0x96, 0x91, 0x98, 0x9f, 0x8a, 0x8d, 0x84, 0x83,
+	0xde, 0xd9, 0xd0, 0xd7, 0xc2, 0xc5, 0xcc, 0xcb, 0xe6, 0xe1, 0xe8, 0xef, 0xfa, 0xfd, 0xf4, 0xf3
+};
+
+static uint8_t KTH71_IsCRCOK(uint8_t *pbuf, uint8_t buflen)
+{
+	uint8_t crc = 0x00;
+	uint8_t i;
+	for (i = 0; i < buflen - 1; i++)
+	{
+		crc = CRC8Table[crc ^ pbuf[i]];
+	}
+	crc = crc ^ 0x55;
+	return (crc == pbuf[buflen - 1]) ? 1 : 0;
+}
+
+
+
+uint16_t KTH7112_ReadAngle(void)
+{
+	uint8_t pRxData[3] = {0};
+	uint32_t tmp;
+
+	// 1. 清 OVR 溢出
+	tmp = SPI3->DR;
+	tmp = SPI3->SR;
+	(void)tmp;
+
+	// 2. 保证 SPI 处于关闭状态，统一配置
+	SPI3->CR1 &= ~SPI_CR1_SPE;
+
+	// 3. 配置为：单线、发送模式
+	SPI3->CR1 |= SPI_CR1_BIDIOE;
+	SPI3->CR1 |= SPI_CR1_SPE;
+
+	// 4. CS 拉低（开始通信）
+	GPIOB->BSRR = (uint32_t)GPIO_Pin_3 << 16U;
+
+	// 5. 发送 0x00
+	while (!(SPI3->SR & SPI_SR_TXE));
+	SPI3->DR = 0x00;
+	while (!(SPI3->SR & SPI_SR_TXE));
+	while (SPI3->SR & SPI_SR_BSY);
+
+	// 6. 关闭 SPI，切换为接收模式
+	SPI3->CR1 &= ~SPI_CR1_SPE;
+	SPI3->CR1 &= ~SPI_CR1_BIDIOE;
+	SPI3->CR1 |= SPI_CR1_SPE;
+
+	// 7. 连续读取 3 字节（关键：不中断、不延时）
+	for (int i = 0; i < 3; i++)
+	{
+		while (!(SPI3->SR & SPI_SR_RXNE));
+		pRxData[i] = (uint8_t)SPI3->DR;
+	}
+
+	// 8. 关闭 SPI，停止时钟
+	SPI3->CR1 &= ~SPI_CR1_SPE;
+	while (SPI3->SR & SPI_SR_BSY);
+
+	// 9. CS 拉高（结束通信）
+	GPIOB->BSRR = GPIO_Pin_3;
+
+	// 10. 输出角度（14bit 或 16bit 编码器）
+	return ((uint16_t)pRxData[0] << 8) | pRxData[1];
+}
+
+// // 全局变量
+// uint8_t KTH7112_RxBuf[3] = {0};
+
+uint16_t KTH7112_ReadAngle_DMA(void)
+{
+	// 清 OVR
+	(void)SPI3->DR;
+	(void)SPI3->SR;
+
+	// 关闭 DMA
+	DMA1_Stream2->CR &= ~DMA_SxCR_EN;
+	while(DMA1_Stream2->CR & DMA_SxCR_EN);
+	DMA1_Stream2->NDTR = 3;  // 接收3字节
+
+	// CS 拉低
+	GPIO_ResetBits(GPIOB, GPIO_Pin_3);
+
+	// 切换 SPI → 发送模式
+	SPI3->CR1 |= SPI_CR1_BIDIOE;
+	SPI_Cmd(SPI3, ENABLE);
+
+	// 开启 DMA
+	DMA1_Stream2->CR |= DMA_SxCR_EN;
+
+	// 发送 0x00
+	while(!(SPI3->SR & SPI_SR_TXE));
+	SPI3->DR = 0x00;
+	while(!(SPI3->SR & SPI_SR_TXE));
+	while(SPI3->SR & SPI_SR_BSY);
+
+	// 切换 SPI → 接收模式
+	SPI_Cmd(SPI3, DISABLE);
+	SPI3->CR1 &= ~SPI_CR1_BIDIOE;
+	SPI_Cmd(SPI3, ENABLE);
+
+	// ======================== 关键：用寄存器判断 DMA 完成（兼容所有F4库）
+	while(!(DMA1->LISR & (1 << 21)));  // 等待 TCIF2 置位
+
+	// 关闭 DMA
+	DMA1_Stream2->CR &= ~DMA_SxCR_EN;
+
+	// 清 DMA 标志
+	DMA1->LIFCR |= (1 << 21);
+
+	// 关闭 SPI
+	SPI_Cmd(SPI3, DISABLE);
+	while(SPI3->SR & SPI_SR_BSY);
+
+	// CS 拉高
+	GPIO_SetBits(GPIOB, GPIO_Pin_3);
+
+	return ((uint16_t)KTH7112_RxBuf[0] << 8) | KTH7112_RxBuf[1];
+}
+
+
+void encoder_zero_position(void)
+{
+	int32_t current_count_in_cpr;
+
+	// 1. 先锁存当前单圈位置
+	current_count_in_cpr = count_in_cpr_;
+
+	// 如果是绝对值编码器，也可以直接用当前绝对位置
+	if ((encoder_config.mode == MODE_SPI_AS5047P) ||
+		(encoder_config.mode == MODE_SPI_MT6701) ||
+		(encoder_config.mode == MODE_SPI_MA730) ||
+		(encoder_config.mode == MODE_SPI_TLE5012B) ||
+		(encoder_config.mode == MODE_SPI_MT6835) ||
+		(encoder_config.mode == MODE_SPI_KTH7112))
+	{
+		current_count_in_cpr = pos_abs_;
+	}
+
+	// 2. 多圈累计清零
+	shadow_count_ = 0;
+	pos_estimate_counts_ = 0.0f;
+	pos_estimate_ = 0.0f;
+
+	// 3. 保留当前真实单圈角度，避免下一次采样突变
+	count_in_cpr_ = current_count_in_cpr;
+	pos_cpr_counts_ = (float)current_count_in_cpr;
+
+	// 4. 速度和插值清零，减少瞬态抖动
+	vel_estimate_counts_ = 0.0f;
+	vel_estimate_ = 0.0f;
+	interpolation_ = 0.5f;
+	pos_circular_ = 0.0f;
+
+	// 5. 如果当前在位置控制，目标也同步归零，避免电机因为目标没变而跳动
+	input_pos_ = 0.0f;
+	input_vel_ = 0.0f;
+	input_torque_ = 0.0f;
+	input_pos_updated_ = false;
+
+	pos_setpoint_ = 0.0f;
+	vel_setpoint_ = 0.0f;
+	torque_setpoint_ = 0.0f;
+	vel_integrator_torque_ = 0.0f;
+}
 
 /*****************************************************************************/
 //初始化三种SPI接口的编码器的参数, 初始化I2C接口或者SPI接口
@@ -106,12 +289,17 @@ void MagneticSensor_Init(void)
 		case MODE_SPI_MT6835:
 			SPI3_Init_(SPI_CPOL_High);   //MT6835
 			break;
+		case MODE_SPI_KTH7112:
+			SPI3_Init_KTH7112(SPI_CPOL_High);
+		// SPI3_Init_KTH7112(SPI_CPOL_Low);
+			break;
 	}
 }
 /*****************************************************************************/
 // @brief Turns the motor in one direction for a bit and then in the other
 // direction in order to find the offset between the electrical phase 0
 // and the encoder state 0.
+// float expected_encoder_delta;
 bool run_offset_calibration(void)
 {
 	uint32_t  i;
@@ -191,6 +379,7 @@ bool run_offset_calibration(void)
 	// Check CPR
 	float elec_rad_per_enc = motor_config.pole_pairs * 2 * M_PI * (1.0f / (float)(encoder_config.cpr));
 	float expected_encoder_delta = encoder_config.calib_scan_distance / elec_rad_per_enc;   //理论上的角度差值
+	// expected_encoder_delta = encoder_config.calib_scan_distance / elec_rad_per_enc;   //理论上的角度差值
 	calib_scan_response_ = fabsf(shadow_count_ - init_enc_val);                             //实际的角度差值
 	if (fabsf(calib_scan_response_ - expected_encoder_delta) / expected_encoder_delta > encoder_config.calib_range)  //误差率大于2%，认为错误
 	{
@@ -252,10 +441,11 @@ uint8_t crc_high_first(uint8_t *ptr, int len)  //用于MT6835
 	return crc;
 }
 /*****************************************************************************/
+uint32_t pos,pos_val;
 void abs_spi_cb(void)
 {
 	uint16_t rawVal;
-	uint32_t pos;
+	// uint32_t pos;
 	
 	switch(encoder_config.mode)
 	{
@@ -303,6 +493,12 @@ void abs_spi_cb(void)
 			if(crc_high_first(p,3)!=crc)return;
 			pos = ((rawVal<<5)|(rawVal2>>11));
 		} break;
+		case MODE_SPI_KTH7112:{
+			// rawVal = KTH7112_ReadAngle();
+				rawVal = KTH7112_ReadAngle_DMA();
+				pos_val = rawVal;
+				pos = rawVal;
+		}break;
 		case MODE_INCREMENTAL:
 			encoder_set_error(ERROR_UNSUPPORTED_ENCODER_MODE);
 			break;
@@ -325,6 +521,7 @@ void sample_now(void)
 		case MODE_SPI_MA730:
 		case MODE_SPI_TLE5012B:
 		case MODE_SPI_MT6835:
+		case MODE_SPI_KTH7112:
 			abs_spi_cb();
 			break;
 	}
@@ -481,6 +678,7 @@ bool encoder_update(void)
         case MODE_SPI_MT6701:
         case MODE_SPI_MA730:
         case MODE_SPI_TLE5012B:
+		case MODE_SPI_KTH7112:
         case MODE_SPI_MT6835: {
             // 检查绝对位置是否已更新（正常情况下每次应为true，因为sample_now()刚被执行过）
             if(abs_spi_pos_updated_ == false)  
@@ -525,7 +723,7 @@ bool encoder_update(void)
     // 对于SPI绝对式编码器，直接使用锁存的绝对位置
     if((encoder_config.mode==MODE_SPI_AS5047P)||(encoder_config.mode==MODE_SPI_MT6701)||
        (encoder_config.mode==MODE_SPI_MA730)||(encoder_config.mode==MODE_SPI_TLE5012B)||
-       (encoder_config.mode==MODE_SPI_MT6835))
+       (encoder_config.mode==MODE_SPI_MT6835)||(encoder_config.mode==MODE_SPI_KTH7112))
         count_in_cpr_ = pos_abs_latched;
     
     // 保存上一次的CPR内位置（用于计算循环位置）

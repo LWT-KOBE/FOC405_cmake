@@ -12,7 +12,9 @@ Iph_ABC_t  current_meas_;
 Iph_ABC_t  DC_calib_;
 float dc_calib_running_since_ = 0.0f;
 
-float effective_current_lim_ = 10.0f; // [A]
+// float effective_current_lim_ = 10.0f; // [A]
+
+float effective_current_lim_ = 20.0f; // [A]
 float max_allowed_current_ = 0.0f;    // [A] set in setup()
 float max_dc_calib_ = 0.0f;           // [A] set in setup()
 
@@ -46,7 +48,9 @@ void motor_para_init(void)
 	// Value used to compute shunt amplifier gains
 	//float requested_current_range = 60.0f; //  [A]1mΩ采样电阻对应60A，0.5mΩ采样电阻对应120A
 	// motor_config.current_control_bandwidth = 1000.0f;  // [rad/s]
-	motor_config.current_control_bandwidth = 1000.0f;  // [rad/s] //修改
+	// motor_config.current_control_bandwidth = 1000.0f;  // [rad/s] //修改
+	motor_config.current_control_bandwidth = 200.0f;
+	// motor_config.current_control_bandwidth = 50.0f;
 	motor_config.inverter_temp_limit_lower = 100;
 	motor_config.inverter_temp_limit_upper = 120;
 	
@@ -130,6 +134,13 @@ void Resistance_on_measurement(void)
 		disarm();
 		set_error(ERROR_UNKNOWN_VBUS_VOLTAGE);
 	}
+
+	else if(vbus_voltage >= 56)   //限制电源电压不能高于56V
+	{
+		disarm();
+		set_error(ERROR_UNKNOWN_VBUS_VOLTAGE);
+	}
+
 	else
 	{
 		float vfactor = 1.0f / ((2.0f / 3.0f) * vbus_voltage);

@@ -231,6 +231,7 @@ void TIM7_Init(void)
 int time_cnt = 0;
 int enc_cnt = 0;
 uint64_t can_cnt = 0;
+uint8_t flash_flag = 0;
 float temperature_motor, temperature_board;
 // 1. 定义NTC参数（根据实际硬件配置）
 NTC_Params_t ntc_params_motor, ntc_params_board;
@@ -274,6 +275,11 @@ void TIM7_IRQHandler(void)
 		temperature_board = NTC_GetTemperatureC(adc1_value[0], &ntc_params_board);
 		temperature_motor = NTC_GetTemperatureC(adc1_value[1], &ntc_params_motor);
 
+		if (flash_flag == 1)
+		{
+			flash_para_write();
+			flash_flag = 0;
+		}
 		// rtt_JsMsg.msg1 = pos_estimate_;
 		// rtt_JsMsg.msg2 = vbus_voltage;
 		// rtt_JsMsg.msg3 = vel_estimate_;
@@ -310,6 +316,7 @@ void TIM7_IRQHandler(void)
 				vofaFrame.fdata[13] = temperature_motor; // 电机NTC温度值
 				vofaFrame.fdata[14] = Id_measured; //
 				vofaFrame.fdata[15] = Idq_setpoint_src_->d;
+				vofaFrame.fdata[16] = pos_val;
 				vofa_printf_USB();
 			}
 		}

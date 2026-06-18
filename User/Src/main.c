@@ -30,39 +30,8 @@ uint32_t timecount(void)
 	return diff;
 }
 
-void USB_GPIO_Force_Reconnect(void)
-{
-	GPIO_InitTypeDef GPIO_InitStructure;
 
-	// 使能 GPIOA 时钟
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-
-	// 1. 先将 USB_DP (PA12) 配置为推挽输出并拉低，模拟断开
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;  // USB_DP
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	GPIO_ResetBits(GPIOA, GPIO_Pin_12);  // 拉低 D+
-	delay_us(200000);  // 保持断开状态
-
-	// 2. 恢复为 USB 复用功能
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_12;  // USB_DM 和 USB_DP
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	// 连接到 USB OTG FS 复用功能
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource11, GPIO_AF_OTG_FS);
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource12, GPIO_AF_OTG_FS);
-
-	delay_us(100000);
-}
-
+uint16_t kth7112_angle = 0;
 /*****************************************************************************/
 //支持USB通信和USART2通信，
 //USART2接线：GPIO3接USB转串口的RXD，GPIO4接USB转串口的TXD，GND共地
@@ -94,11 +63,12 @@ int main(void)
 	controller_para_init();     //配置控制参数
 	anticogging_init();         //抗齿槽参数默认值
 	flash_para_read();          //读取参数
+	// SPI3_Init_KTH7112(SPI_CPOL_Low);       //初始化KTH7112
+	// SPI3_Init_KTH7112(SPI_CPOL_High);
 	if(encoder_config.pre_calibrated && axis_config.startup_closed_loop_control)current_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;  //如果已经校准并且配置上电闭环，设置闭环模式
 
 	delay_us(500000);
-	USB_GPIO_Force_Reconnect();
-	USBD_Init(&USB_OTG_dev,USB_OTG_FS_CORE_ID,&USR_desc, &USBD_CDC_cb, &USR_cb);  //USB转串口,COM174
+	// USBD_Init(&USB_OTG_dev,USB_OTG_FS_CORE_ID,&USR_desc, &USBD_CDC_cb, &USR_cb);  //USB转串口,COM174
 	TIM_Cmd(TIM1, ENABLE);   //TIM1触发中断，AD开始转换。但是PWM还没有输出
 
 	for(uint32_t i=0; i<2000; i++)   //最多等待2秒。main.cpp文件第565行
@@ -114,6 +84,7 @@ int main(void)
 	while(1)
 	{
 		run_state_machine_loop();
+		// kth7112_angle = KTH7112_ReadAngle();
 		delay_us(1000);     //1ms，延时增加通信的可靠性
 
 	}

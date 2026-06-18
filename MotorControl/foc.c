@@ -45,6 +45,12 @@ bool enqueue_modulation_timings(float mod_alpha, float mod_beta)
 	TIM1->CCR1 = (uint16_t)(tA * (float)TIM_1_8_PERIOD_CLOCKS);
 	TIM1->CCR2 = (uint16_t)(tB * (float)TIM_1_8_PERIOD_CLOCKS);
 	TIM1->CCR3 = (uint16_t)(tC * (float)TIM_1_8_PERIOD_CLOCKS);
+
+
+	// TIM1->CCR1 = (uint16_t)(tC * (float)TIM_1_8_PERIOD_CLOCKS);
+	// TIM1->CCR2 = (uint16_t)(tB * (float)TIM_1_8_PERIOD_CLOCKS);
+	// TIM1->CCR3 = (uint16_t)(tA * (float)TIM_1_8_PERIOD_CLOCKS);
+
 	return true;
 }
 /*****************************************************************************/
@@ -74,6 +80,9 @@ void on_measurement(uint32_t input_timestamp, Iph_ABC_t *current)
 	// Clark transform
 	Ialpha_beta[0] = current->phA;
 	Ialpha_beta[1] = one_by_sqrt3 * (current->phB - current->phC);
+
+	// Ialpha_beta[0] = -current->phA;
+	// Ialpha_beta[1] = one_by_sqrt3 * (-current->phB - current->phC);
 	
 	if(meas_resis==1)Resistance_on_measurement();
 	else if(meas_induc==1)Inductance_on_measurement(input_timestamp);
