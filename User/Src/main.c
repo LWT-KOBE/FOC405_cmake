@@ -31,7 +31,7 @@ uint32_t timecount(void)
 }
 
 
-uint16_t kth7112_angle = 0;
+uint16_t kth7112_angle = 0,kth7111_angle = 2;
 /*****************************************************************************/
 //支持USB通信和USART2通信，
 //USART2接线：GPIO3接USB转串口的RXD，GPIO4接USB转串口的TXD，GND共地
@@ -40,7 +40,7 @@ int main(void)
 {
 	//IAP_APP_Init();              //初始化IAP
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
-	// USART2_Init(115200);        //排针的GPIO3为TXD2，GPIO4为RXD2，GND共地
+	USART2_Init(115200);        //排针的GPIO3为TXD2，GPIO4为RXD2，GND共地
 	usart2_set_baud(baudrate_115200);  //设置波特率
 	tim14_InitTick();           //1ms中断初始化，为系统提供计时
 	TIM1_PWM_Init();            //M0接口PWM配置，但没有使能
@@ -57,6 +57,8 @@ int main(void)
 	motor_para_init();
 	motor_setup();
 	MagneticSensor_Init();
+	// SPI3_Init_KTH7111_SSI();
+	SPI1_Init_KTH7111_SSI();
 	controller_config_default();//电机控制参数上电默认值
 	trapTraj_config_default();  //梯形轨迹参数上电默认值
 	sCurveTraj_config_default(); //S型轨迹参数上电默认值
@@ -65,26 +67,28 @@ int main(void)
 	flash_para_read();          //读取参数
 	// SPI3_Init_KTH7112(SPI_CPOL_Low);       //初始化KTH7112
 	// SPI3_Init_KTH7112(SPI_CPOL_High);
-	if(encoder_config.pre_calibrated && axis_config.startup_closed_loop_control)current_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;  //如果已经校准并且配置上电闭环，设置闭环模式
+	 if(encoder_config.pre_calibrated && axis_config.startup_closed_loop_control)current_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;  //如果已经校准并且配置上电闭环，设置闭环模式
 
-	delay_us(500000);
-	// USBD_Init(&USB_OTG_dev,USB_OTG_FS_CORE_ID,&USR_desc, &USBD_CDC_cb, &USR_cb);  //USB转串口,COM174
-	TIM_Cmd(TIM1, ENABLE);   //TIM1触发中断，AD开始转换。但是PWM还没有输出
+	 delay_us(500000);
+	 // USBD_Init(&USB_OTG_dev,USB_OTG_FS_CORE_ID,&USR_desc, &USBD_CDC_cb, &USR_cb);  //USB转串口,COM174
+	 TIM_Cmd(TIM1, ENABLE);   //TIM1触发中断，AD开始转换。但是PWM还没有输出
 
-	for(uint32_t i=0; i<2000; i++)   //最多等待2秒。main.cpp文件第565行
-	{
-		if(dc_calib_valid)break;       //等待电流校准完成后退出
-		delay_us(1000);
-	}
+	 for(uint32_t i=0; i<2000; i++)   //最多等待2秒。main.cpp文件第565行
+	 {
+	 	if(dc_calib_valid)break;       //等待电流校准完成后退出
+	 	delay_us(1000);
+	 }
 
-	USART2_SendDMA(sprintf(snd2_buff,"Motor Ready!\r\n"));
-	//在MyProject.h中设置电机参数和控制模式。参数设置与官方代码一致，请先熟悉官方odrivetool的操作
+	 USART2_SendDMA(sprintf(snd2_buff,"Motor Ready!\r\n"));
+	// 在MyProject.h中设置电机参数和控制模式。参数设置与官方代码一致，请先熟悉官方odrivetool的操作
 
-	DWT_Timer_Init();               //初始化DWT计时器
+	 DWT_Timer_Init();               //初始化DWT计时器
 	while(1)
 	{
 		run_state_machine_loop();
 		// kth7112_angle = KTH7112_ReadAngle();
+		// KTH7111_ReadSSIAngle_SPI3(&kth7111_angle);
+		kth7111_angle = KTH7111_ReadSSIAngle();
 		delay_us(1000);     //1ms，延时增加通信的可靠性
 
 	}

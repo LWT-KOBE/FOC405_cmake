@@ -484,14 +484,35 @@ void OD_SET_INPUT_CUR(CanRxMsg* CanRevData) {
 	input_torque_ = new_cur;
 }
 
-void OD_SET_INPUT_LI(CanRxMsg* CanRevData) {
+void OD_SET_INPUT_LIMITS(CanRxMsg* CanRevData) {
 	// 将CAN数据转换为float（假设数据是小端序）
-    float new_cur;
-    memcpy(&new_cur, CanRevData->Data, sizeof(float));
-
-	// 更新输入电流
-	input_torque_ = new_cur;
+    float cur_limit,vel_limit;
+    memcpy(&cur_limit, CanRevData->Data, sizeof(float));
+	memcpy(&vel_limit, CanRevData->Data + sizeof(float), sizeof(float));
+	// 更新电流最大值
+	motor_config.current_lim = cur_limit;
+	// 更新速度最大值
+	ctrl_config.vel_limit = vel_limit;
 }
+
+void OD_SET_TRAPTRAJ_VEL_LIMIT(CanRxMsg* CanRevData)
+{
+	float traptraj_vel_limits;
+	memcpy(&traptraj_vel_limits, CanRevData->Data, sizeof(float));
+
+	trapTraj_config.vel_limit = traptraj_vel_limits;
+}
+
+void OD_SET_TRAPTRAJ_ACCELS(CanRxMsg* CanRevData)
+{
+	float traptraj_accel_limits, traptraj_decel_limits;
+	memcpy(&traptraj_accel_limits, CanRevData->Data, sizeof(float));
+
+	memcpy(&traptraj_decel_limits, CanRevData->Data + sizeof(float), sizeof(float));
+	trapTraj_config.accel_limit = traptraj_accel_limits;
+	trapTraj_config.decel_limit = traptraj_decel_limits;
+}
+
 
 void OD_MSG_SET_AXIS_REQUESTED_STATE(CanRxMsg* CanRevData)
 {
@@ -617,6 +638,7 @@ void CAN1_RX0_IRQHandler(void){
 		// 从接收 FIFO 中读取消息
 		CAN_Receive(CAN1, CAN_FIFO0, &can1_rx_msg);
 
+		// 机致科技中空编码器
 		if (can1_rx_msg.StdId == 0x64)
 		{
 			En_d40_read(&can1_rx_msg);
@@ -702,7 +724,8 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_SET_LIMITS:
-
+					    // 设置限制
+						OD_SET_INPUT_LIMITS(&can1_rx_msg);
 						break;
 
 					case MSG_START_ANTICOGGING:
@@ -715,10 +738,12 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_SET_TRAJ_ACCEL_LIMITS:
 						// 设置轨迹加速度限制
+						OD_SET_TRAPTRAJ_ACCELS(&can1_rx_msg);
 						break;
 
 					case MSG_SET_TRAJ_VEL_LIMIT:
 						// 设置轨迹速度限制
+					    OD_SET_TRAPTRAJ_VEL_LIMIT(&can1_rx_msg);
 						break;
 
 					case MSG_GET_IQ:
@@ -726,7 +751,7 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_SET_MIT_CONTROL:
-						// 获取无传感器估计值
+						// 设置MIT控制命令
 						set_mit_control_cmd(&can1_rx_msg);
 						break;
 

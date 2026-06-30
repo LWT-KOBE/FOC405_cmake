@@ -8,6 +8,18 @@
 /****************************************************************************/
 #define  MOTOR_TYPE_HIGH_CURRENT   0
 #define  MOTOR_TYPE_GIMBAL         1
+
+#ifndef MOTOR_use_user_phase_params
+#define  MOTOR_use_user_phase_params 0
+#endif
+
+#ifndef MOTOR_phase_resistance
+#define  MOTOR_phase_resistance 0.0f
+#endif
+
+#ifndef MOTOR_phase_inductance
+#define  MOTOR_phase_inductance 0.0f
+#endif
 /****************************************************************************/
 typedef struct 
 {
@@ -17,6 +29,7 @@ typedef struct
 	float resistance_calib_max_voltage; // [V] - You may need to increase this if this voltage isn't sufficient to drive calibration_current through the motor.
 	float phase_inductance;        // to be set by measure_phase_inductance
 	float phase_resistance;        // to be set by measure_phase_resistance
+	bool use_user_phase_params;    // if true, skip measuring R/L and use the configured values directly
 	float torque_constant;         // [Nm/A] for PM motors, [Nm/A^2] for induction motors. Equal to 8.27/Kv of the motor
 	int32_t motor_type;
 	// Read out max_allowed_current to see max supported value for current_lim.

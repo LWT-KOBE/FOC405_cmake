@@ -1,6 +1,10 @@
 #ifndef MYPROJECT_H
 #define MYPROJECT_H
 
+#define  MOTOR_use_user_phase_params 0
+#define  MOTOR_phase_resistance      2.0f
+#define  MOTOR_phase_inductance      0.005f
+
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx.h"
 #include <string.h>
@@ -106,8 +110,11 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 //电机配置参数，根据电机型号选择
 #define  MOTOR_type                 MOTOR_TYPE_HIGH_CURRENT   //MOTOR_TYPE_GIMBAL //MOTOR_TYPE_HIGH_CURRENT
 #define  MOTOR_pole_pairs                          7    //电机极对数
-#define  MOTOR_calibration_current                 3    //校准电流
-#define  MOTOR_resistance_calib_max_voltage        1    //校准限制电压
+// #define  MOTOR_calibration_current                 6    //校准电流
+// #define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
+
+#define  MOTOR_calibration_current                 4    //校准电流
+#define  MOTOR_resistance_calib_max_voltage        8    //校准限制电压
 
 // #define  MOTOR_calibration_current                 4    //校准电流
 // #define  MOTOR_resistance_calib_max_voltage        2    //校准限制电压

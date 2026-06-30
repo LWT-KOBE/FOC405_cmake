@@ -92,6 +92,67 @@ static uint8_t KTH71_IsCRCOK(uint8_t *pbuf, uint8_t buflen)
 	return (crc == pbuf[buflen - 1]) ? 1 : 0;
 }
 
+uint16_t KTH7111_ReadSSIAngle(void)
+{
+#if 0
+	uint8_t pRxData[3] = {0};
+	uint16_t angle = 0;
+	int i;
+
+	SPI3_ClearOVR_Flag();
+
+	SPI3->CR1 &= ~SPI_CR1_SPE;
+	SPI3->CR1 &= ~SPI_CR1_BIDIMODE;
+	SPI3->CR1 |= SPI_CR1_RXONLY;
+	SPI3->CR1 |= SPI_CR1_SPE;
+
+	for (i = 0; i < 3; i++)
+	{
+		while (!(SPI3->SR & SPI_SR_RXNE));
+		pRxData[i] = (uint8_t)SPI3->DR;
+	}
+
+	// while (SPI3->SR & SPI_SR_BSY);
+	SPI3->CR1 &= ~SPI_CR1_SPE;
+
+	SPI3_ClearOVR_Flag();
+
+	angle |= (uint16_t)pRxData[0] << 9;
+	angle |= (uint16_t)pRxData[1] << 1;
+	angle |= (uint16_t)pRxData[2] >> 7;
+
+	return angle;
+#else
+	uint8_t pRxData[3] = {0};
+	uint16_t angle = 0;
+	int i;
+
+	SPI1_ClearOVR_Flag();
+
+	SPI1->CR1 &= ~SPI_CR1_SPE;
+	SPI1->CR1 &= ~SPI_CR1_BIDIMODE;
+	SPI1->CR1 |= SPI_CR1_RXONLY;
+	SPI1->CR1 |= SPI_CR1_SPE;
+
+	for (i = 0; i < 3; i++)
+	{
+		while (!(SPI1->SR & SPI_SR_RXNE));
+		pRxData[i] = (uint8_t)SPI1->DR;
+	}
+
+	// while (SPI1->SR & SPI_SR_BSY);
+	SPI1->CR1 &= ~SPI_CR1_SPE;
+
+	SPI1_ClearOVR_Flag();
+
+	angle |= (uint16_t)pRxData[0] << 9;
+	angle |= (uint16_t)pRxData[1] << 1;
+	angle |= (uint16_t)pRxData[2] >> 7;
+
+	return angle;
+#endif
+}
+
 
 
 uint16_t KTH7112_ReadAngle(void)

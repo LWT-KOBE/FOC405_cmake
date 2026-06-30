@@ -238,6 +238,124 @@ void SPI3_Init_KTH7112_SSI(uint16_t spi_cpol)
 	SPI_Cmd(SPI3, ENABLE);
 }
 
+
+void SPI3_ClearOVR_Flag(void)
+{
+	volatile uint16_t tmp;
+	tmp = SPI3->DR;
+	tmp = SPI3->SR;
+	(void)tmp;
+}
+
+void SPI1_ClearOVR_Flag(void)
+{
+	volatile uint16_t tmp;
+	tmp = SPI1->DR;
+	tmp = SPI1->SR;
+	(void)tmp;
+}
+
+
+void SPI3_Init_KTH7111_SSI(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	SPI_InitTypeDef  SPI_InitStructure;
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
+
+	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_10;      // PC10 = SCK
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_11;      // PC11 = MISO
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource10, GPIO_AF_SPI3);
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource11, GPIO_AF_SPI3);
+
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3, ENABLE);
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3, DISABLE);
+
+	SPI_I2S_DeInit(SPI3);
+
+	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_RxOnly;
+	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_16;
+	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+	SPI_InitStructure.SPI_CRCPolynomial = 7;
+
+	SPI_Init(SPI3, &SPI_InitStructure);
+	SPI_Cmd(SPI3, DISABLE);
+}
+
+void SPI1_Init_KTH7111_SSI(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	SPI_InitTypeDef  SPI_InitStructure;
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+
+	/* PA5 -> SCK */
+	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+	// GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_SPI1);
+
+	/* PB4 -> MISO */
+	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_4;
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	// GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;
+	// GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AN;
+	// GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+	// GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	// GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+	// GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource4, GPIO_AF_SPI1);
+
+	RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI1, ENABLE);
+	RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI1, DISABLE);
+
+	SPI_I2S_DeInit(SPI1);
+
+	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_RxOnly;
+	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_8;
+	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+	SPI_InitStructure.SPI_CRCPolynomial = 7;
+	SPI_Init(SPI1, &SPI_InitStructure);
+
+	SPI_Cmd(SPI1, DISABLE);
+}
+
+
+
 /*****************************************************************************/
 uint16_t SPIx_ReadWriteByte(uint16_t byte)
 {

@@ -28,6 +28,7 @@ bool  meas_induc = false;   //当前正在测量电感
 /****************************************************************************/
 void arm(void);
 void disarm(void);
+static bool validate_user_phase_params(void);
 /****************************************************************************/
 /****************************************************************************/
 //参数初始化，官方代码中，直接在定义的时候赋值
@@ -37,8 +38,9 @@ void motor_para_init(void)
 	motor_config.pole_pairs = MOTOR_pole_pairs;  //电机极对数，参数设置宏定义在MyProject.h文件中
 	motor_config.calibration_current = MOTOR_calibration_current;    // [A]
 	motor_config.resistance_calib_max_voltage = MOTOR_resistance_calib_max_voltage; // [V] - You may need to increase this if this voltage isn't sufficient to drive calibration_current through the motor.
-	motor_config.phase_inductance = 0.0f;        // to be set by measure_phase_inductance
-	motor_config.phase_resistance = 0.0f;        // to be set by measure_phase_resistance
+	motor_config.phase_inductance = MOTOR_phase_inductance;        // to be set by measure_phase_inductance
+	motor_config.phase_resistance = MOTOR_phase_resistance;        // to be set by measure_phase_resistance
+	motor_config.use_user_phase_params = MOTOR_use_user_phase_params;
 	motor_config.torque_constant = 0.04f;        // [Nm/A] for PM motors, [Nm/A^2] for induction motors. Equal to 8.27/Kv of the motor
 	motor_config.motor_type = MOTOR_type;  
 	// Read out max_allowed_current to see max supported value for current_lim.
@@ -210,6 +212,28 @@ void update_current_controller_gains(void)
 	pi_gains_[1] = motor_config.current_control_bandwidth * motor_config.phase_resistance;
 }
 /****************************************************************************/
+static bool validate_user_phase_params(void)
+{
+	if (motor_config.motor_type == MOTOR_TYPE_GIMBAL)
+	{
+		return true;
+	}
+
+	if (!(motor_config.phase_resistance > 0.0f && motor_config.phase_resistance <= 2.0f))
+	{
+		set_error(ERROR_PHASE_RESISTANCE_OUT_OF_RANGE);
+		return false;
+	}
+
+	if (!(motor_config.phase_inductance >= 2e-6f && motor_config.phase_inductance <= 4000e-6f))
+	{
+		set_error(ERROR_PHASE_INDUCTANCE_OUT_OF_RANGE);
+		return false;
+	}
+
+	return true;
+}
+/****************************************************************************/
 bool measure_phase_resistance(float test_current, float max_voltage)
 {
 	uint32_t i;
@@ -323,6 +347,16 @@ bool measure_phase_inductance(float test_voltage)
 bool run_calibration(void)
 {
 	float R_calib_max_voltage = motor_config.resistance_calib_max_voltage;
+
+	if (motor_config.use_user_phase_params)
+	{
+		motor_config.phase_resistance = MOTOR_phase_resistance;
+		motor_config.phase_inductance = MOTOR_phase_inductance;
+		if(!validate_user_phase_params())return 0;
+		update_current_controller_gains();
+		is_calibrated_ = 1;
+		return 1;
+	}
 	
 	if(motor_config.motor_type == MOTOR_TYPE_HIGH_CURRENT)
 	{

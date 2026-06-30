@@ -52,7 +52,7 @@ typedef  enum {
 		MSG_SET_TRAJ_ACCEL_LIMITS = 0x012,           // 设置轨迹加速度限制
 		MSG_SET_TRAJ_INERTIA = 0x013,                // 设置轨迹惯性
 		MSG_GET_IQ = 0x014,                          // 获取电流
-		MSG_SET_MIT_CONTROL = 0x015,        // 获取无传感器估计值
+		MSG_SET_MIT_CONTROL = 0x015,				 // MIT模式控制
 		MSG_GET_BUS_VOLTAGE_CURRENT = 0x016,         // 获取母线电压和电流
 		MSG_CLEAR_ERRORS = 0x017,                    // 清除错误
 		
