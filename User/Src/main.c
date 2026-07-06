@@ -31,7 +31,8 @@ uint32_t timecount(void)
 }
 
 
-uint16_t kth7112_angle = 0,kth7111_angle = 2;
+// uint16_t kth7112_angle = 0,kth7111_angle = 2;
+// float angle_k = 0;
 /*****************************************************************************/
 //支持USB通信和USART2通信，
 //USART2接线：GPIO3接USB转串口的RXD，GPIO4接USB转串口的TXD，GND共地
@@ -88,7 +89,9 @@ int main(void)
 		run_state_machine_loop();
 		// kth7112_angle = KTH7112_ReadAngle();
 		// KTH7111_ReadSSIAngle_SPI3(&kth7111_angle);
-		kth7111_angle = KTH7111_ReadSSIAngle();
+		// kth7111_angle = KTH7111_ReadSSIAngle();
+		// kth7111_angle = KTH7111_ReadSSIAngle();
+		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
 		delay_us(1000);     //1ms，延时增加通信的可靠性
 
 	}

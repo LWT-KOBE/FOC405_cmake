@@ -111,8 +111,8 @@ void run_state_machine_loop(void)
 				input_pos_ = 0;   //清零输入值
 				input_vel_ = 0;
 				input_torque_ = 0;
-				mit_kd = 0;
-				mit_kp = 0.05;
+				mit_kd = 0.05f;
+				mit_kp = 0.0f;
 				mit_target_pos_ = 0;
 				mit_target_velocity_ = 0;
 				mit_target_torque_ = 0;

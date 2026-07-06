@@ -65,6 +65,7 @@
 
 #define GR 8
 
+
 // Period in [s]
 #define CURRENT_MEAS_PERIOD ( (float)2*TIM_1_8_PERIOD_CLOCKS*(TIM_1_8_RCR+1) / (float)TIM_1_8_CLOCK_HZ )
 static const float current_meas_period = CURRENT_MEAS_PERIOD;

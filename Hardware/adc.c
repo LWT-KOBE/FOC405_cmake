@@ -16,7 +16,12 @@ void ADC_Common_Init(void)
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC|RCC_AHB1Periph_GPIOA, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6;  //PA4-M1_temp/PA5-AUX_temp/PA6-Vbus_S
+	// GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6;  //PA4-M1_temp/PA5-AUX_temp/PA6-Vbus_S
+	// GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+	// GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	// GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4|GPIO_Pin_6;  //PA4-M1_temp/PA5-AUX_temp/PA6-Vbus_S
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -68,13 +73,20 @@ void ADC1_DMA_Init(void)
 	ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_Rising;
 	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T2_TRGO;        //外部触发 T2_TRGO
 	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;                      //ADC数据右对齐
-	ADC_InitStructure.ADC_NbrOfConversion = 4;                                  //4个通道
+	// ADC_InitStructure.ADC_NbrOfConversion = 4;                                  //4个通道
+
+	ADC_InitStructure.ADC_NbrOfConversion = 3;                                  //4个通道
 	ADC_Init(ADC1, &ADC_InitStructure);
 	
+	// ADC_RegularChannelConfig(ADC1, ADC_Channel_15,1, ADC_SampleTime_84Cycles);  //MOS管温度
+	// ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 2, ADC_SampleTime_84Cycles);  //电机温度
+	// ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 3, ADC_SampleTime_84Cycles);  //AUX_temp
+	// ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 4, ADC_SampleTime_84Cycles);  //Vbus
+
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_15,1, ADC_SampleTime_84Cycles);  //MOS管温度
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 2, ADC_SampleTime_84Cycles);  //电机温度
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 3, ADC_SampleTime_84Cycles);  //AUX_temp
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 4, ADC_SampleTime_84Cycles);  //Vbus
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 3, ADC_SampleTime_84Cycles);  //AUX_temp
+	// ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 4, ADC_SampleTime_84Cycles);  //Vbus
 	// ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 5, ADC_SampleTime_84Cycles);  //Vbus
 	
 	ADC_InjectedSequencerLengthConfig(ADC1,1);                                  //注入组只有一个通道

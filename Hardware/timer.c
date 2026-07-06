@@ -10,6 +10,8 @@
 // 	volatile float msg4;
 // }RTT_MSG_U1I1;
 // RTT_MSG_U1I1 rtt_JsMsg,rtt_JsMsg2;
+// uint16_t kth7112_angle = 0,kth7111_angle = 2;
+// float angle_k = 0;
 void TIM1_PWM_Init(void)
 {
 	NVIC_InitTypeDef          NVIC_InitStructure;
@@ -291,6 +293,8 @@ void TIM7_IRQHandler(void)
 		can_cnt++;
 		Motor_CAN_Send_Data(); //发送电机状态数据
 
+		// kth7111_angle = KTH7111_ReadSSIAngle();
+		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
 		// IAP CAN升级
 		//IAP_Send_Device_ino();
 		
