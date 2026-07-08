@@ -43,6 +43,7 @@ int main(void)
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 	USART2_Init(115200);        //排针的GPIO3为TXD2，GPIO4为RXD2，GND共地
 	usart2_set_baud(baudrate_115200);  //设置波特率
+	SPI1_Init_KTH7111_SSI();
 	tim14_InitTick();           //1ms中断初始化，为系统提供计时
 	TIM1_PWM_Init();            //M0接口PWM配置，但没有使能
 	ADC_Common_Init();          //初始化ADC的引脚和通用配置，设置中断
@@ -59,7 +60,7 @@ int main(void)
 	motor_setup();
 	MagneticSensor_Init();
 	// SPI3_Init_KTH7111_SSI();
-	SPI1_Init_KTH7111_SSI();
+	// SPI1_Init_KTH7111_SSI();
 	controller_config_default();//电机控制参数上电默认值
 	trapTraj_config_default();  //梯形轨迹参数上电默认值
 	sCurveTraj_config_default(); //S型轨迹参数上电默认值

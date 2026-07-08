@@ -87,8 +87,8 @@ uint8_t fetch_and_reset_adcs(Iph_ABC_t *current)
 /****************************************************************************/
 uint32_t time_cntr=0;
 volatile uint32_t timestamp_ = 0;
-uint16_t kth7112_angle = 0,kth7111_angle = 2;
-float angle_k = 0;
+// uint16_t kth7112_angle = 0,kth7111_angle = 2;
+// float angle_k = 0;
 
 //中断频率16KHz，进入中断的同时触发ADC
 void TIM1_UP_TIM10_IRQHandler(void)
@@ -112,8 +112,8 @@ void TIM1_UP_TIM10_IRQHandler(void)
 	if(!counting_down)   //=0为递增计数,上臂为低下臂为高,此时采样
 	{
 		sample_now();                        //读取角度
-		kth7111_angle = KTH7111_ReadSSIAngle();
-		angle_k = (float)kth7111_angle/65535.0f * 360.0f;
+		// kth7111_angle = KTH7111_ReadSSIAngle();
+		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
 		fetch_and_reset_adcs(&current0);     //电流采样，获得的采样值在current0
 		current_meas_cb(timestamp_, &current0);  //传入采样值并运算
 		control_loop_cb();
