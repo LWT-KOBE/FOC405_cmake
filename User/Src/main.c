@@ -51,6 +51,7 @@ int main(void)
 	ADC2_TRGO_Init();           //配置注入组，检测m0_phB，等待TIM1触发
 	ADC3_TRGO_Init();           //配置注入组，检测m0_phC，等待TIM1触发
 	TIM2_Init();                //触发ADC1的规则转换
+	KTH7111_TIM7_PLL_Init();
 	TIM7_Init();
 
 	CAN1_Set_BaudRate(OD_CAN_BaudRate); //CAN波特率设置
@@ -59,16 +60,12 @@ int main(void)
 	motor_para_init();
 	motor_setup();
 	MagneticSensor_Init();
-	// SPI3_Init_KTH7111_SSI();
-	// SPI1_Init_KTH7111_SSI();
 	controller_config_default();//电机控制参数上电默认值
 	trapTraj_config_default();  //梯形轨迹参数上电默认值
 	sCurveTraj_config_default(); //S型轨迹参数上电默认值
 	controller_para_init();     //配置控制参数
 	anticogging_init();         //抗齿槽参数默认值
 	flash_para_read();          //读取参数
-	// SPI3_Init_KTH7112(SPI_CPOL_Low);       //初始化KTH7112
-	// SPI3_Init_KTH7112(SPI_CPOL_High);
 	 if(encoder_config.pre_calibrated && axis_config.startup_closed_loop_control)current_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;  //如果已经校准并且配置上电闭环，设置闭环模式
 
 	 delay_us(500000);

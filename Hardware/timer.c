@@ -1,5 +1,6 @@
 #include "MyProject.h"
 #include "timer.h"
+#include "kth7111.h"
 /*****************************************************************************/
 // volatile uint8_t JS_RTT_BufferUp1[2048] = {0,};
 // const uint8_t JS_RTT_Channel = 1;
@@ -12,9 +13,18 @@
 // RTT_MSG_U1I1 rtt_JsMsg,rtt_JsMsg2;
 // uint16_t kth7112_angle = 0,kth7111_angle = 2;
 // float angle_k = 0;
-uint16_t kth7112_angle = 0,kth7111_angle = 2, first_kth7111_angle = 0;
-float angle_k = 0, first_angle = 0;
-u8 first_flag = 0;
+uint16_t kth7112_angle = 0,kth7111_angle = 2;
+float angle_k = 0;
+// #define TIM7_INTERRUPT_HZ           1000.0f
+#define TIM7_INTERRUPT_HZ           4000.0f
+
+// #define KTH7111_PLL_BANDWIDTH_HZ    150.0f
+// #define KTH7111_PLL_MAX_DELTA       2500
+
+#define KTH7111_PLL_BANDWIDTH_HZ    80.0f
+#define KTH7111_PLL_MAX_DELTA       128
+
+static KTH7111_PLL_t kth7111_pll_;
 void TIM1_PWM_Init(void)
 {
 	NVIC_InitTypeDef          NVIC_InitStructure;
@@ -225,7 +235,9 @@ void TIM7_Init(void)
 	NVIC_InitStructure.NVIC_IRQChannelCmd=ENABLE;
 	NVIC_Init(&NVIC_InitStructure); 
 	
-	TIM_TimeBaseInitStructure.TIM_Period = 1000-1;      //1ms
+	// TIM_TimeBaseInitStructure.TIM_Period = 1000-1;      //1ms
+
+	TIM_TimeBaseInitStructure.TIM_Period = 250-1;      //1ms
 	TIM_TimeBaseInitStructure.TIM_Prescaler=84-1;       //84分频=1MHz
 	TIM_TimeBaseInitStructure.TIM_CounterMode=TIM_CounterMode_Up;
 	TIM_TimeBaseInitStructure.TIM_ClockDivision=TIM_CKD_DIV1;
@@ -233,74 +245,19 @@ void TIM7_Init(void)
 	TIM_ITConfig(TIM7,TIM_IT_Update,ENABLE);
 	TIM_Cmd(TIM7,ENABLE);
 }
+void KTH7111_TIM7_PLL_Init(void)
+{
+	KTH7111_PLL_Init(&kth7111_pll_, 65536, TIM7_INTERRUPT_HZ, KTH7111_PLL_BANDWIDTH_HZ);
+	KTH7111_PLL_SetMaxDelta(&kth7111_pll_, KTH7111_PLL_MAX_DELTA);
+}
 int time_cnt = 0;
 int enc_cnt = 0;
 uint64_t can_cnt = 0;
 uint8_t flash_flag = 0;
 float temperature_motor, temperature_board;
 
-static uint8_t KTH7111_IsFrameReasonable(uint16_t angle_now, uint16_t angle_last)
-{
-	int32_t delta;
 
-	if (angle_now == 0xFFFFu || angle_now == 0x0000u)
-	{
-		return 0;
-	}
 
-	delta = (int32_t)angle_now - (int32_t)angle_last;
-
-	if (delta > 32768) delta -= 65536;
-	if (delta < -32768) delta += 65536;
-
-	/* 这里的门限要按你的最大机械转速来调。
-	   如果一次中断理论上不可能跳这么大，就判坏帧。 */
-	if (delta > 3000 || delta < -3000)
-	{
-		return 0;
-	}
-
-	return 1;
-}
-
-uint16_t KTH7111_ReadAngle_OptimizedLite(void)
-{
-	static uint8_t first = 1;
-	static uint16_t last_valid = 0;
-	static int32_t filt_angle_q16 = 0;   /* Q16.16 */
-
-	uint16_t raw;
-	int32_t delta;
-	int32_t filt_int;
-
-	raw = KTH7111_ReadSSIAngle();
-
-	if (first)
-	{
-		first = 0;
-		last_valid = raw;
-		filt_angle_q16 = ((int32_t)raw << 16);
-		return raw;
-	}
-
-	if (!KTH7111_IsFrameReasonable(raw, last_valid))
-	{
-		return (uint16_t)(filt_angle_q16 >> 16);
-	}
-
-	delta = (int32_t)raw - (int32_t)last_valid;
-	if (delta > 32768) delta -= 65536;
-	if (delta < -32768) delta += 65536;
-
-	/* 一阶滤波，保留动态同时减小抖动 */
-	filt_angle_q16 += (delta << 16) / 4;
-
-	filt_int = filt_angle_q16 >> 16;
-	filt_int = mod(filt_int, 65536);
-
-	last_valid = raw;
-	return (uint16_t)filt_int;
-}
 // 1. 定义NTC参数（根据实际硬件配置）
 NTC_Params_t ntc_params_motor, ntc_params_board;
 
@@ -349,17 +306,13 @@ void TIM7_IRQHandler(void)
 			flash_flag = 0;
 		}
 
-		kth7111_angle = KTH7111_ReadSSIAngle();
-		// kth7111_angle = KTH7111_ReadAngle_OptimizedLite();
-		// angle_k = (float)kth7111_angle/65535.0f * 360.0f - first_angle;
-		angle_k = (float)kth7111_angle/65535.0f * 360.0f;
+		KTH7111_PLL_SampleAndUpdate(&kth7111_pll_);
+		kth7111_angle = KTH7111_PLL_GetFiltAngle(&kth7111_pll_);
+		angle_k = KTH7111_PLL_GetAccAngleDeg(&kth7111_pll_) / 2.0f;
 
-		if (first_flag == 0)
-		{
-			first_kth7111_angle = KTH7111_ReadSSIAngle();
-			first_flag = 1;
-			first_angle = angle_k;
-		}
+		// kth7111_angle = KTH7111_ReadSSIAngle();
+		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
+
 		// rtt_JsMsg.msg1 = pos_estimate_;
 		// rtt_JsMsg.msg2 = vbus_voltage;
 		// rtt_JsMsg.msg3 = vel_estimate_;
