@@ -51,7 +51,7 @@ void motor_para_init(void)
 	//float requested_current_range = 60.0f; //  [A]1mΩ采样电阻对应60A，0.5mΩ采样电阻对应120A
 	// motor_config.current_control_bandwidth = 1000.0f;  // [rad/s]
 	// motor_config.current_control_bandwidth = 1000.0f;  // [rad/s] //修改
-	motor_config.current_control_bandwidth = 200.0f;
+	motor_config.current_control_bandwidth = MOTOR_CURRENT_CONTROL_BANDWIDTH;
 	// motor_config.current_control_bandwidth = 50.0f;
 	motor_config.inverter_temp_limit_lower = 100;
 	motor_config.inverter_temp_limit_upper = 120;
@@ -204,7 +204,7 @@ void update_current_controller_gains(void)
 //	float p_gain = motor_config.current_control_bandwidth * motor_config.phase_inductance;
 //	float plant_pole = motor_config.phase_resistance / motor_config.phase_inductance;
 	
-//	if(motor_config.phase_inductance == 0)plant_pole=0;  //针对云台电机，不测量电阻电感，防止I参数无穷大，printf不好看
+//	if(motor_config.phase_inductance == 0)plant_pole=0;  //针对云台电机，不测量电阻电感，防止I参数无穷大
 //	pi_gains_[0] = p_gain;
 //	pi_gains_[1] = plant_pole * p_gain;
 	

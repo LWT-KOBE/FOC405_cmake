@@ -56,7 +56,7 @@ int main(void)
 	#if (ENCODER_mode != MODE_HALL)
 	KTH7111_TIM7_PLL_Init();
 	#endif
-	TIM7_Init();
+	// TIM7_Init();
 
 	CAN1_Set_BaudRate(OD_CAN_BaudRate); //CAN波特率设置
 	// CAN1_Set_BaudRate(2); //CAN波特率设置
@@ -88,6 +88,7 @@ int main(void)
 	 DWT_Timer_Init();               //初始化DWT计时器
 	while(1)
 	{
+		TIM7_LowPriorityService();
 		run_state_machine_loop();
 		// kth7112_angle = KTH7112_ReadAngle();
 		// KTH7111_ReadSSIAngle_SPI3(&kth7111_angle);

@@ -254,20 +254,84 @@ void KTH7111_TIM7_PLL_Init(void)
 }
 int time_cnt = 0;
 int enc_cnt = 0;
-uint64_t can_cnt = 0;
-uint8_t flash_flag = 0;
+volatile uint64_t can_cnt = 0;
+volatile uint8_t flash_flag = 0;
 float temperature_motor, temperature_board;
+static volatile uint8_t tim7_temperature_pending = 0u;
+static volatile uint8_t tim7_can_pending = 0u;
+static volatile uint8_t tim7_vofa_pending = 0u;
 
 
 
 // 1. 定义NTC参数（根据实际硬件配置）
 NTC_Params_t ntc_params_motor, ntc_params_board;
 
+static void TIM7_InitNtcParamsOnce(void)
+{
+	static uint8_t ntc_params_ready = 0u;
+
+	if (ntc_params_ready) {
+		return;
+	}
+
+	NTC_InitParams(&ntc_params_motor, 10000.0f, 25.0f, 3950.0f, 3300.0f, 3.3f, 4095);
+	NTC_InitParams(&ntc_params_board, 10000.0f, 25.0f, 3950.0f, 3300.0f, 3.3f, 4095);
+	ntc_params_ready = 1u;
+}
+
+void TIM7_LowPriorityService(void)
+{
+	TIM7_InitNtcParamsOnce();
+
+	if (tim7_temperature_pending) {
+		tim7_temperature_pending = 0u;
+		temperature_board = NTC_GetTemperatureC(adc1_value[0], &ntc_params_board);
+		temperature_motor = NTC_GetTemperatureC(adc1_value[1], &ntc_params_motor);
+	}
+
+	if (flash_flag == 1u) {
+		flash_para_write();
+		flash_flag = 0u;
+	}
+
+	if (tim7_can_pending) {
+		tim7_can_pending = 0u;
+		OD_CANSendData_2(CAN1, OD_CANID, MSG_GET_ENCODER_ESTIMATES, 8, pos_estimate_, vel_estimate_, &ODSendData);
+		OD_CANSendData_2(CAN1, OD_CANID, MSG_GET_IQ, 8, Idq_setpoint_.q, Iq_measured, &ODSendData);
+		OD_CANSendData_2(CAN1, OD_CANID, MSG_GET_BUS_VOLTAGE_CURRENT, 8, vbus_voltage, Ibus, &ODSendData);
+	}
+
+	if (tim7_vofa_pending && (current_state_ == AXIS_STATE_CLOSED_LOOP_CONTROL)) {
+		tim7_vofa_pending = 0u;
+		vofaFrame.fdata[0] = vel_estimate_;
+		vofaFrame.fdata[1] = input_vel_;
+		vofaFrame.fdata[2] = pos_estimate_;
+		vofaFrame.fdata[3] = input_pos_;
+		vofaFrame.fdata[4] = encoder_config.pre_calibrated;
+		vofaFrame.fdata[5] = current_meas_.phA;
+		vofaFrame.fdata[6] = current_meas_.phB;
+		vofaFrame.fdata[7] = current_meas_.phC;
+		vofaFrame.fdata[8] = Ibus;
+		vofaFrame.fdata[9] = vbus_voltage;
+		vofaFrame.fdata[10] = Iq_measured;
+		vofaFrame.fdata[11] = Idq_setpoint_.q;
+		vofaFrame.fdata[12] = temperature_board;
+		vofaFrame.fdata[13] = temperature_motor;
+		vofaFrame.fdata[14] = Id_measured;
+		vofaFrame.fdata[15] = Idq_setpoint_src_->d;
+		vofaFrame.fdata[16] = pos_val;
+		vofa_printf_USB();
+	}
+}
+
 void TIM7_IRQHandler(void)
 {
-	static u8 c = 0;
 	if (TIM_GetITStatus(TIM7, TIM_IT_Update) != RESET)
 	{	
+		TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
+		tim7_temperature_pending = 1u;
+
+		#if 0
 		// if(c == 0){
 		//     c = 1;
 		// 	// SEGGER_RTT_ConfigUpBuffer(1,                  // 通道号
@@ -307,6 +371,7 @@ void TIM7_IRQHandler(void)
 			flash_para_write();
 			flash_flag = 0;
 		}
+		#endif
 
 		#if (ENCODER_mode != MODE_HALL)
 		KTH7111_PLL_SampleAndUpdate(&kth7111_pll_);
@@ -329,7 +394,9 @@ void TIM7_IRQHandler(void)
 		time_cnt++;
 		//enc_cnt = HALL_GETState();
 		can_cnt++;
-		Motor_CAN_Send_Data(); //发送电机状态数据
+		if ((can_cnt % 10u) == 0u) {
+			tim7_can_pending = 1u;
+		}
 
 		// kth7111_angle = KTH7111_ReadSSIAngle();
 		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
@@ -339,6 +406,8 @@ void TIM7_IRQHandler(void)
 		
 		if(time_cnt > 1){
 			time_cnt = 0;
+			tim7_vofa_pending = 1u;
+			#if 0
 //			// 进入闭环控制状态才发送
 			if(current_state_ == AXIS_STATE_CLOSED_LOOP_CONTROL){
 				vofaFrame.fdata[0] = vel_estimate_;
@@ -361,8 +430,9 @@ void TIM7_IRQHandler(void)
 				vofaFrame.fdata[16] = pos_val;
 				vofa_printf_USB();
 			}
+			#endif
 		}
-		TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
+		// TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
 		// 在这里添加定时器7的中断处理代码
 	}
 }

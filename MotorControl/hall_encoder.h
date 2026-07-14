@@ -53,6 +53,12 @@ typedef struct {
     volatile float position_turns;
     volatile float velocity_turns_per_sec;
     volatile uint32_t samples_since_edge;
+    volatile uint32_t update_count;
+    volatile uint32_t edge_count;
+    volatile uint32_t illegal_state_count;
+    volatile uint32_t illegal_delta_count;
+    volatile uint32_t large_delta_count;
+    volatile uint32_t max_abs_delta;
 } HallEncoder_t;
 
 extern HallEncoder_t g_hall_encoder;

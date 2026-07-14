@@ -48,6 +48,7 @@ bool run_closed_loop_control_loop(void)
 
 	while (is_armed_  &&  (current_state_ == AXIS_STATE_CLOSED_LOOP_CONTROL))
 	{
+		TIM7_LowPriorityService();
 		delay_us(1000);
 	}
 

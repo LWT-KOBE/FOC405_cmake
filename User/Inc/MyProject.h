@@ -1,10 +1,6 @@
 #ifndef MYPROJECT_H
 #define MYPROJECT_H
 
-#define  MOTOR_use_user_phase_params 0
-#define  MOTOR_phase_resistance      2.0f
-#define  MOTOR_phase_inductance      0.005f
-
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx.h"
 #include <string.h>
@@ -65,7 +61,12 @@
 
 #define GR 8
 
-
+// 电机参数
+#define  MOTOR_use_user_phase_params            0          // 0:使用默认参数 1:使用用户参数
+#define  MOTOR_phase_resistance                 2.0f       // 电机相电阻
+#define  MOTOR_phase_inductance                 0.005f     // 电机相电感
+#define  MOTOR_CURRENT_CONTROL_BANDWIDTH        100.0f     // 电流环带宽 [rad/s]
+#define  MOTOR_torque_constant                  0.04f      // 电机转矩常数 [Nm/A] for PM motors, [Nm/A^2] for induction motors
 // Period in [s]
 #define CURRENT_MEAS_PERIOD ( (float)2*TIM_1_8_PERIOD_CLOCKS*(TIM_1_8_RCR+1) / (float)TIM_1_8_CLOCK_HZ )
 static const float current_meas_period = CURRENT_MEAS_PERIOD;
@@ -103,8 +104,8 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 //根据驱动板硬件设置参数
 //#define VBUS_S_DIVIDER_RATIO   18.73f    //电源分压电阻2.2k+39k
 #define VBUS_S_DIVIDER_RATIO   19.0f    //电源分压电阻1k+18k
-#define SHUNT_RESISTANCE       0.002f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
-// #define SHUNT_RESISTANCE       0.001f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
+// #define SHUNT_RESISTANCE       0.002f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
+#define SHUNT_RESISTANCE       0.001f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
 // #define SHUNT_RESISTANCE       0.005f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
 #define PHASE_CURRENT_GAIN     20.0f     //电流采样运放倍数，20倍
 /****************************************************************************/

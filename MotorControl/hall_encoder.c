@@ -198,6 +198,12 @@ void HallEncoder_Reset(HallEncoder_t *enc)
     enc->position_turns = 0.0f;
     enc->velocity_turns_per_sec = 0.0f;
     enc->samples_since_edge = 0u;
+    enc->update_count = 0u;
+    enc->edge_count = 0u;
+    enc->illegal_state_count = 0u;
+    enc->illegal_delta_count = 0u;
+    enc->large_delta_count = 0u;
+    enc->max_abs_delta = 0u;
 }
 
 uint8_t HallEncoder_Update(HallEncoder_t *enc)
@@ -209,10 +215,14 @@ uint8_t HallEncoder_Update(HallEncoder_t *enc)
     float delta_pos_counts;
     float delta_pos_cpr_counts;
     uint8_t snap_to_zero_vel = 0u;
+    uint32_t abs_delta;
+
+    enc->update_count++;
 
     sector = hall_table[enc->hall_state & 0x07];
 
     if (sector < 0) {
+        enc->illegal_state_count++;
         enc->error = 1u;
         enc->direction = 0;
         enc->delta_enc = 0;
@@ -251,8 +261,16 @@ uint8_t HallEncoder_Update(HallEncoder_t *enc)
     }
 
     enc->delta_enc = delta;
+    abs_delta = (delta < 0) ? (uint32_t)(-delta) : (uint32_t)delta;
+    if (abs_delta > enc->max_abs_delta) {
+        enc->max_abs_delta = abs_delta;
+    }
+    if (abs_delta > 1u) {
+        enc->large_delta_count++;
+    }
 
     if ((delta == 3) || (delta == -3)) {
+        enc->illegal_delta_count++;
         enc->error = 1u;
         enc->direction = 0;
         if (!enc->config.ignore_illegal_state) {
@@ -269,6 +287,7 @@ uint8_t HallEncoder_Update(HallEncoder_t *enc)
         }
     } else {
         enc->samples_since_edge = 0u;
+        enc->edge_count++;
         enc->direction = (delta > 0) ? 1 : -1;
     }
 
