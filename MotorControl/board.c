@@ -69,8 +69,12 @@ uint8_t fetch_and_reset_adcs(Iph_ABC_t *current)
 	// current->phA = current->phB + current->phC;
 
 	// 修改电流方向相反
-	current->phB = -phase_current_from_adcval(ADC2->JDR1);
-	current->phC = -phase_current_from_adcval(ADC3->JDR1);
+	// current->phB = -phase_current_from_adcval(ADC2->JDR1);
+	// current->phC = -phase_current_from_adcval(ADC3->JDR1);
+	// current->phA = -current->phB - current->phC;
+
+	current->phB = phase_current_from_adcval(ADC2->JDR1);
+	current->phC = phase_current_from_adcval(ADC3->JDR1);
 	current->phA = -current->phB - current->phC;
 
 	ib_val = ADC2->JDR1;

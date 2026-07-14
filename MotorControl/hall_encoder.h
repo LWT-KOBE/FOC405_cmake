@@ -25,17 +25,31 @@ typedef struct {
     uint16_t pole_pairs;
     uint32_t sample_hz;
     uint8_t polarity_xor;
+    uint8_t ignore_illegal_state;
+    uint8_t enable_phase_interpolation;
+    float bandwidth;
 } HallEncoderConfig_t;
 
 typedef struct {
     HallEncoderConfig_t config;
+    volatile uint8_t raw_hall_state;
     volatile uint8_t hall_state;
     volatile uint8_t hall_sector;
     volatile uint8_t initialized;
+    volatile uint8_t ready;
     volatile uint8_t error;
     volatile int8_t direction;
     volatile int32_t count;
+    volatile int32_t shadow_count;
     volatile int32_t count_in_cpr;
+    volatile int32_t delta_enc;
+    volatile float pll_kp;
+    volatile float pll_ki;
+    volatile float pos_estimate_counts;
+    volatile float pos_cpr_counts;
+    volatile float vel_estimate_counts;
+    volatile float interpolation;
+    volatile float edge_pos[6];
     volatile float position_turns;
     volatile float velocity_turns_per_sec;
     volatile uint32_t samples_since_edge;
@@ -44,7 +58,8 @@ typedef struct {
 extern HallEncoder_t g_hall_encoder;
 
 void HallEncoder_Init(HallEncoder_t *enc, const HallEncoderConfig_t *config);
-void HallEncoder_Update(HallEncoder_t *enc);
+void HallEncoder_SampleNow(HallEncoder_t *enc);
+uint8_t HallEncoder_Update(HallEncoder_t *enc);
 void HallEncoder_Reset(HallEncoder_t *enc);
 
 void HallEncoder_TIM3_Init(uint32_t sample_hz);

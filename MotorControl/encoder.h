@@ -58,6 +58,10 @@ typedef struct
 	bool  use_index_offset;
 	bool  enable_phase_interpolation; // Use velocity to interpolate inside the count state
 	bool find_idx_on_lockin_only;     // Only be sensitive during lockin scan constant vel state
+	bool ignore_illegal_hall_state;
+	uint8_t hall_polarity;
+	bool hall_polarity_calibrated;
+	float hall_edge_phcnt[6];
 	float phase_;              //最终用于计算的当前电角度，范围-Pi~Pi。
 	float phase_vel_;          //最终用于计算的当前电角速度，单位rad/s。
 	uint8_t hall_state_; // bit[0] = HallA, .., bit[2] = HallC
@@ -72,6 +76,8 @@ extern  float  vel_estimate_;
 extern  float  pos_circular_;
 /****************************************************************************/
 void MagneticSensor_Init(void);
+bool run_hall_polarity_calibration(void);
+bool run_hall_phase_calibration(void);
 bool run_offset_calibration(void);
 void sample_now(void);
 bool encoder_update(void);

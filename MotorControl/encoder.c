@@ -8,6 +8,7 @@
 // #define  SPI_CS0_H   GPIO_SetBits(GPIOA, GPIO_Pin_0)
 
 //GPIO8为CS
+#include <hall_encoder.h>
 #define  SPI_CS0_L   GPIO_ResetBits(GPIOB, GPIO_Pin_3)
 #define  SPI_CS0_H   GPIO_SetBits(GPIOB, GPIO_Pin_3)
 
@@ -40,6 +41,7 @@ bool vel_estimate_valid_ = false;   //速度估算是否可用
 
 int16_t  tim_cnt_sample_;
 
+
 bool abs_spi_pos_updated_ = false;  //绝对值编码器角度是否被正确读出
 /*****************************************************************************/
 /*****************************************************************************/
@@ -57,6 +59,123 @@ void update_pll_gains(void)
 	// Check that we don't get problems with discrete time approximation
 	if (!(current_meas_period * pll_kp_ < 1.0f))encoder_set_error(ERROR_UNSTABLE_GAIN);
 }
+/*****************************************************************************/
+
+static const float hall_edge_defaults_[6] = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+static bool hall_polarity_calibration_active_ = false;
+static bool hall_phase_calibration_active_ = false;
+static bool hall_sample_states_ = false;
+static bool hall_sample_phase_ = false;
+static uint32_t hall_states_seen_count_[8];
+static uint32_t hall_phase_calib_seen_count_[6];
+static uint8_t hall_last_cnt_valid_ = 0u;
+static int32_t hall_last_cnt_ = 0;
+
+static void HallEncoder_LoadDefaultEdges(void)
+{
+	uint32_t i;
+
+	for (i = 0u; i < 6u; ++i)
+	{
+		encoder_config.hall_edge_phcnt[i] = hall_edge_defaults_[i];
+	}
+}
+
+static void HallEncoder_CopyConfigToRuntime(void)
+{
+	uint32_t i;
+
+	g_hall_encoder.config.polarity_xor = encoder_config.hall_polarity_calibrated ? encoder_config.hall_polarity : 0u;
+	g_hall_encoder.config.ignore_illegal_state = encoder_config.ignore_illegal_hall_state ? 1u : 0u;
+	g_hall_encoder.config.enable_phase_interpolation = encoder_config.enable_phase_interpolation ? 1u : 0u;
+	g_hall_encoder.config.bandwidth = encoder_config.bandwidth;
+	g_hall_encoder.config.sample_hz = current_meas_hz;
+	for (i = 0u; i < 6u; ++i)
+	{
+		g_hall_encoder.edge_pos[i] = encoder_config.hall_edge_phcnt[i];
+	}
+}
+
+static void HallEncoder_ResetRuntimeModel(void)
+{
+	HallEncoder_CopyConfigToRuntime();
+	HallEncoder_Reset(&g_hall_encoder);
+	shadow_count_ = 0;
+	count_in_cpr_ = 0;
+	interpolation_ = 0.5f;
+	pos_estimate_counts_ = 0.0f;
+	pos_cpr_counts_ = 0.0f;
+	vel_estimate_counts_ = 0.0f;
+	pos_estimate_ = 0.0f;
+	vel_estimate_ = 0.0f;
+	pos_circular_ = 0.0f;
+	pos_estimate_valid_ = false;
+	vel_estimate_valid_ = false;
+	encoder_config.phase_ = 0.0f;
+	encoder_config.phase_vel_ = 0.0f;
+	encoder_config.hall_state_ = g_hall_encoder.raw_hall_state;
+	is_ready_ = false;
+}
+
+static uint8_t HallEncoder_DecodeState(uint8_t hall_state, int32_t *hall_cnt)
+{
+	switch (hall_state & 0x07u)
+	{
+		case 0x01u: *hall_cnt = 0; return 1u;
+		case 0x03u: *hall_cnt = 1; return 1u;
+		case 0x02u: *hall_cnt = 2; return 1u;
+		case 0x06u: *hall_cnt = 3; return 1u;
+		case 0x04u: *hall_cnt = 4; return 1u;
+		case 0x05u: *hall_cnt = 5; return 1u;
+		default: return 0u;
+	}
+}
+
+static uint8_t HallEncoder_FlipDetect(uint8_t states, uint8_t idx)
+{
+	return (uint8_t)(((~states) & 0xFFu) == ((1u << idx) | (1u << (7u - idx))));
+}
+
+static void HallEncoder_ProjectToControlLoop(void)
+{
+	float interpolated_enc;
+	float elec_rad_per_enc;
+	float ph;
+	float pos_cpr_counts_last = pos_cpr_counts_;
+
+	shadow_count_ = g_hall_encoder.shadow_count;
+	count_in_cpr_ = g_hall_encoder.count_in_cpr;
+	interpolation_ = g_hall_encoder.interpolation;
+	pos_estimate_counts_ = g_hall_encoder.pos_estimate_counts;
+	pos_cpr_counts_ = g_hall_encoder.pos_cpr_counts;
+	vel_estimate_counts_ = g_hall_encoder.vel_estimate_counts;
+	pos_estimate_ = g_hall_encoder.position_turns;
+	vel_estimate_ = g_hall_encoder.velocity_turns_per_sec;
+	encoder_config.hall_state_ = g_hall_encoder.raw_hall_state;
+	pos_circular_ += wrap_pm((g_hall_encoder.pos_cpr_counts - pos_cpr_counts_last) / (float)encoder_config.cpr, 1.0f);
+	pos_circular_ = fmodf_pos(pos_circular_, ctrl_config.circular_setpoint_range);
+	pos_estimate_valid_ = g_hall_encoder.ready ? true : false;
+	vel_estimate_valid_ = g_hall_encoder.ready ? true : false;
+	if (encoder_config.pre_calibrated && g_hall_encoder.ready)
+	{
+		is_ready_ = true;
+	}
+
+	interpolated_enc = (float)(count_in_cpr_ - encoder_config.phase_offset) + interpolation_;
+	elec_rad_per_enc = motor_config.pole_pairs * 2.0f * M_PI * (1.0f / (float)encoder_config.cpr);
+	ph = elec_rad_per_enc * (interpolated_enc - encoder_config.phase_offset_float);
+
+	if (is_ready_)
+	{
+		encoder_config.phase_ = wrap_pm_pi(ph) * encoder_config.direction;
+		encoder_config.phase_vel_ = (2.0f * M_PI) * vel_estimate_ * motor_config.pole_pairs * encoder_config.direction;
+	}
+	else
+	{
+		encoder_config.phase_vel_ = 0.0f;
+	}
+}
+
 /*****************************************************************************/
 
 /******************************************************************************/
@@ -91,6 +210,218 @@ static uint8_t KTH71_IsCRCOK(uint8_t *pbuf, uint8_t buflen)
 	crc = crc ^ 0x55;
 	return (crc == pbuf[buflen - 1]) ? 1 : 0;
 }
+
+static void Encoder_SetupOpenLoopForCalibration(float start_lock_duration)
+{
+	float max_current_ramp;
+
+	memset(&openloop_controller_, 0, sizeof(OPENLOOP_struct));
+
+	max_current_ramp = motor_config.calibration_current / start_lock_duration * 2.0f;
+	openloop_controller_.max_current_ramp_ = max_current_ramp;
+	openloop_controller_.max_voltage_ramp_ = max_current_ramp;
+	openloop_controller_.max_phase_vel_ramp_ = INFINITY;
+	openloop_controller_.target_current_ = motor_config.motor_type != MOTOR_TYPE_GIMBAL ? motor_config.calibration_current : 0.0f;
+	openloop_controller_.target_voltage_ = motor_config.motor_type != MOTOR_TYPE_GIMBAL ? 0.0f : motor_config.calibration_current;
+	openloop_controller_.target_vel_ = 0.0f;
+	openloop_controller_.total_distance_ = 0.0f;
+	openloop_controller_.phase_ = wrap_pm_pi(0 - encoder_config.calib_scan_distance / 2.0f);
+
+	Idq_setpoint_src_ = &openloop_controller_.Idq_setpoint_;
+	Vdq_setpoint_src_ = &openloop_controller_.Vdq_setpoint_;
+	phase_src_ = &openloop_controller_.phase_;
+	phase_vel_src_ = &openloop_controller_.phase_vel_;
+	motor_phase_vel_src_ = &openloop_controller_.phase_vel_;
+
+	arm();
+}
+
+static bool Encoder_WaitCalibrationLock(uint32_t lock_ms)
+{
+	uint32_t i;
+
+	for (i = 0; i < lock_ms; ++i)
+	{
+		if (!is_armed_)
+		{
+			return false;
+		}
+		delay_us(1000);
+	}
+
+	return true;
+}
+
+bool run_hall_polarity_calibration(void)
+{
+	const float start_lock_duration = 1.0f;
+	const float spin_duration = 3.0f;
+	float finish_distance = encoder_config.calib_scan_omega * spin_duration;
+	uint32_t i;
+	uint8_t states_seen = 0u;
+	uint8_t states_confirmed = 0u;
+	uint8_t hall_polarity = 0u;
+
+	Encoder_SetupOpenLoopForCalibration(start_lock_duration);
+	if (!Encoder_WaitCalibrationLock((uint32_t)(start_lock_duration * 1000.0f)))
+	{
+		return false;
+	}
+
+	encoder_config.hall_polarity_calibrated = false;
+	memset(hall_states_seen_count_, 0, sizeof(hall_states_seen_count_));
+	hall_last_cnt_valid_ = 0u;
+	hall_sample_states_ = true;
+	hall_polarity_calibration_active_ = true;
+	openloop_controller_.target_vel_ = encoder_config.calib_scan_omega;
+	openloop_controller_.total_distance_ = 0.0f;
+
+	while (is_armed_)
+	{
+		if (openloop_controller_.total_distance_ >= finish_distance)
+		{
+			break;
+		}
+		delay_us(1000);
+	}
+
+	hall_sample_states_ = false;
+	hall_polarity_calibration_active_ = false;
+	disarm();
+
+	if (!is_armed_ && motor_error)
+	{
+		return false;
+	}
+
+	for (i = 0u; i < 8u; ++i)
+	{
+		if (hall_states_seen_count_[i] > 0u)
+		{
+			states_seen |= (uint8_t)(1u << i);
+		}
+		if (hall_states_seen_count_[i] > 50u)
+		{
+			states_confirmed |= (uint8_t)(1u << i);
+		}
+	}
+
+	if (states_seen != states_confirmed)
+	{
+		encoder_set_error(ERROR_ILLEGAL_HALL_STATE);
+		return false;
+	}
+
+	if (HallEncoder_FlipDetect(states_seen, 0u))
+	{
+		hall_polarity = 0x00u;
+	}
+	else if (HallEncoder_FlipDetect(states_seen, 1u))
+	{
+		hall_polarity = 0x01u;
+	}
+	else if (HallEncoder_FlipDetect(states_seen, 2u))
+	{
+		hall_polarity = 0x02u;
+	}
+	else if (HallEncoder_FlipDetect(states_seen, 3u))
+	{
+		hall_polarity = 0x04u;
+	}
+	else
+	{
+		encoder_set_error(ERROR_ILLEGAL_HALL_STATE);
+		return false;
+	}
+
+	encoder_config.hall_polarity = hall_polarity;
+	encoder_config.hall_polarity_calibrated = true;
+	HallEncoder_ResetRuntimeModel();
+	return true;
+}
+
+bool run_hall_phase_calibration(void)
+{
+	const float start_lock_duration = 1.0f;
+	const float spin_duration = 30.0f;
+	float finish_distance = encoder_config.calib_scan_omega * spin_duration;
+	float delta_phase = 0.0f;
+	float offset;
+	uint32_t i;
+
+	if (!encoder_config.hall_polarity_calibrated)
+	{
+		encoder_set_error(ERROR_HALL_NOT_CALIBRATED_YET);
+		return false;
+	}
+
+	Encoder_SetupOpenLoopForCalibration(start_lock_duration);
+	if (!Encoder_WaitCalibrationLock((uint32_t)(start_lock_duration * 1000.0f)))
+	{
+		return false;
+	}
+
+	HallEncoder_LoadDefaultEdges();
+	memset(hall_phase_calib_seen_count_, 0, sizeof(hall_phase_calib_seen_count_));
+	hall_last_cnt_valid_ = 0u;
+	hall_sample_phase_ = true;
+	hall_phase_calibration_active_ = true;
+	openloop_controller_.target_vel_ = encoder_config.calib_scan_omega;
+	openloop_controller_.total_distance_ = 0.0f;
+
+	while (is_armed_)
+	{
+		if (openloop_controller_.total_distance_ >= finish_distance)
+		{
+			break;
+		}
+		delay_us(1000);
+	}
+
+	hall_sample_phase_ = false;
+	hall_phase_calibration_active_ = false;
+	disarm();
+
+	if (!is_armed_ && motor_error)
+	{
+		return false;
+	}
+
+	for (i = 0u; i < 6u; ++i)
+	{
+		uint32_t next_i = (i == 5u) ? 0u : (i + 1u);
+		if (hall_phase_calib_seen_count_[i] == 0u)
+		{
+			encoder_set_error(ERROR_ILLEGAL_HALL_STATE);
+			HallEncoder_LoadDefaultEdges();
+			return false;
+		}
+		delta_phase += wrap_pm_pi(encoder_config.hall_edge_phcnt[next_i] - encoder_config.hall_edge_phcnt[i]);
+	}
+
+	if (delta_phase < 0.0f)
+	{
+		encoder_config.direction = -1;
+		for (i = 0u; i < 6u; ++i)
+		{
+			encoder_config.hall_edge_phcnt[i] = wrap_pm_pi(-encoder_config.hall_edge_phcnt[i]);
+		}
+	}
+	else
+	{
+		encoder_config.direction = 1;
+	}
+
+	offset = encoder_config.hall_edge_phcnt[0];
+	for (i = 0u; i < 6u; ++i)
+	{
+		encoder_config.hall_edge_phcnt[i] = fmodf_pos((6.0f / (2.0f * M_PI)) * (encoder_config.hall_edge_phcnt[i] - offset), 6.0f);
+	}
+
+	HallEncoder_ResetRuntimeModel();
+	return true;
+}
+
 
 uint16_t KTH7111_ReadSSIAngle(void)
 {
@@ -324,6 +655,14 @@ void MagneticSensor_Init(void)
 	encoder_config.use_index_offset = true;
 	encoder_config.enable_phase_interpolation = true; // Use velocity to interpolate inside the count state
 	encoder_config.find_idx_on_lockin_only = false; // Only be sensitive during lockin scan constant vel state
+	encoder_config.ignore_illegal_hall_state = false;
+	encoder_config.hall_polarity = 0u;
+	encoder_config.hall_polarity_calibrated = false;
+	HallEncoder_LoadDefaultEdges();
+	if (encoder_config.mode == MODE_HALL)
+	{
+		encoder_config.cpr = motor_config.pole_pairs * 6;
+	}
 	
 	update_pll_gains();    //锁相环参数整定
 	
@@ -332,10 +671,26 @@ void MagneticSensor_Init(void)
 		case MODE_INCREMENTAL:
 			TIM3_Encoder_Init();         //ABZ
 			break;
-		case MODE_HALL:
-			TIM3_InputCapture_Config(); //HALL
-			break;  					
-		case MODE_SPI_AS5047P:
+		case MODE_HALL: {
+			HallEncoderConfig_t hall_cfg;
+
+			hall_cfg.hall_a.port = GPIOB;
+			hall_cfg.hall_a.pin = GPIO_Pin_4;
+			hall_cfg.hall_b.port = GPIOB;
+			hall_cfg.hall_b.pin = GPIO_Pin_5;
+			hall_cfg.hall_c.port = GPIOC;
+			hall_cfg.hall_c.pin = GPIO_Pin_9;
+			hall_cfg.pole_pairs = (uint16_t)motor_config.pole_pairs;
+			hall_cfg.sample_hz = current_meas_hz;
+			hall_cfg.polarity_xor = encoder_config.hall_polarity_calibrated ? encoder_config.hall_polarity : 0u;
+			hall_cfg.ignore_illegal_state = encoder_config.ignore_illegal_hall_state ? 1u : 0u;
+			hall_cfg.enable_phase_interpolation = encoder_config.enable_phase_interpolation ? 1u : 0u;
+			hall_cfg.bandwidth = encoder_config.bandwidth;
+			HallEncoder_Init(&g_hall_encoder, &hall_cfg);
+			HallEncoder_CopyConfigToRuntime();
+			break;
+		}
+	        case MODE_SPI_AS5047P:
 			SPI3_Init_(SPI_CPOL_Low);    //AS5047P
 			break;
 		case MODE_SPI_MT6701:
@@ -370,6 +725,12 @@ bool run_offset_calibration(void)
 	if (encoder_config.use_index && !index_found_)
 	{
 		encoder_set_error(ERROR_INDEX_NOT_FOUND_YET);
+		return false;
+	}
+
+	if ((encoder_config.mode == MODE_HALL) && !encoder_config.hall_polarity_calibrated)
+	{
+		encoder_set_error(ERROR_HALL_NOT_CALIBRATED_YET);
 		return false;
 	}
 	
@@ -577,6 +938,9 @@ void sample_now(void)
 		case MODE_INCREMENTAL:
 			tim_cnt_sample_ = TIM3->CNT;
 			break;
+		case MODE_HALL:
+			HallEncoder_SampleNow(&g_hall_encoder);
+			break;
 		case MODE_SPI_AS5047P:
 		case MODE_SPI_MT6701:
 		case MODE_SPI_MA730:
@@ -735,7 +1099,84 @@ bool encoder_update(void)
         } break;
         
         // 各种SPI绝对式编码器模式
-        case MODE_SPI_AS5047P:
+			case MODE_HALL: {
+				int32_t hall_cnt;
+
+				if (hall_polarity_calibration_active_)
+				{
+					if (hall_sample_states_)
+					{
+						hall_states_seen_count_[g_hall_encoder.raw_hall_state & 0x07u]++;
+					}
+					return 1;
+				}
+
+				if (hall_phase_calibration_active_)
+				{
+					if (HallEncoder_DecodeState(g_hall_encoder.raw_hall_state ^ encoder_config.hall_polarity, &hall_cnt))
+					{
+						if (hall_sample_phase_ && hall_last_cnt_valid_)
+						{
+							int32_t mod_hall_cnt = mod(hall_cnt - hall_last_cnt_, 6);
+							uint32_t edge_idx;
+							float *edge_phase;
+
+							if (mod_hall_cnt == 0)
+							{
+								goto hall_phase_skip;
+							}
+							else if (mod_hall_cnt == 1)
+							{
+								edge_idx = (uint32_t)hall_cnt;
+							}
+							else if (mod_hall_cnt == 5)
+							{
+								edge_idx = (uint32_t)hall_last_cnt_;
+							}
+							else
+							{
+								encoder_set_error(ERROR_ILLEGAL_HALL_STATE);
+								return 0;
+							}
+
+							hall_phase_calib_seen_count_[edge_idx]++;
+							edge_phase = &encoder_config.hall_edge_phcnt[edge_idx];
+							if (hall_phase_calib_seen_count_[edge_idx] == 1u)
+							{
+								*edge_phase = openloop_controller_.phase_;
+							}
+							else
+							{
+								*edge_phase += (openloop_controller_.phase_ - *edge_phase) / (float)hall_phase_calib_seen_count_[edge_idx];
+								*edge_phase = wrap_pm_pi(*edge_phase);
+							}
+						}
+
+						hall_phase_skip:
+						hall_last_cnt_ = hall_cnt;
+						hall_last_cnt_valid_ = 1u;
+						return 1;
+					}
+
+					if (!encoder_config.ignore_illegal_hall_state)
+					{
+						encoder_set_error(ERROR_ILLEGAL_HALL_STATE);
+						return 0;
+					}
+					return 1;
+				}
+
+				HallEncoder_CopyConfigToRuntime();
+				if (!HallEncoder_Update(&g_hall_encoder))
+				{
+					encoder_set_error(ERROR_INVALID_ESTIMATE);
+					return 0;
+				}
+				HallEncoder_ProjectToControlLoop();
+				return 1;
+			} break;
+
+	        case MODE_SPI_AS5047P:
         case MODE_SPI_MT6701:
         case MODE_SPI_MA730:
         case MODE_SPI_TLE5012B:

@@ -77,9 +77,22 @@ void run_state_machine_loop(void)
 			// usb_send(usb_sndbuff, len);
 			
 			if(status)current_state_ = AXIS_STATE_ENCODER_OFFSET_CALIBRATION;  //直接进入校准
-			else      current_state_ = AXIS_STATE_UNDEFINED;
+			if (status && (encoder_config.mode == MODE_HALL)) current_state_ = AXIS_STATE_ENCODER_HALL_POLARITY_CALIBRATION;
+			else if (!status) current_state_ = AXIS_STATE_UNDEFINED;
 		} break;
 		
+		case AXIS_STATE_ENCODER_HALL_POLARITY_CALIBRATION: {
+			if(!is_calibrated_)goto invalid_state_label;
+			status = run_hall_polarity_calibration();
+			current_state_ = status ? AXIS_STATE_ENCODER_HALL_PHASE_CALIBRATION : AXIS_STATE_UNDEFINED;
+		} break;
+
+		case AXIS_STATE_ENCODER_HALL_PHASE_CALIBRATION: {
+			if(!is_calibrated_)goto invalid_state_label;
+			status = run_hall_phase_calibration();
+			current_state_ = status ? AXIS_STATE_ENCODER_OFFSET_CALIBRATION : AXIS_STATE_UNDEFINED;
+		} break;
+
 		case AXIS_STATE_ENCODER_OFFSET_CALIBRATION: {
 			if(!is_calibrated_)goto invalid_state_label;
 			status = run_offset_calibration();

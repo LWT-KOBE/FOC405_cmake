@@ -15,6 +15,8 @@ void tim14_InitTick(void)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14,ENABLE);
 	
 	NVIC_InitStructure.NVIC_IRQChannel=TIM8_TRG_COM_TIM14_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd=ENABLE;
 	NVIC_Init(&NVIC_InitStructure); 
 	

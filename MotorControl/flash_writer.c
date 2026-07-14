@@ -1,6 +1,7 @@
 #include "MyProject.h"
 #include "stm32f4xx_flash.h"
 #include "flash_writer.h"
+#include <hall_encoder.h>
 /*
 STM32F405RGT6, 1M flash, 中文数据手册P.59
 扇区 0   0x0800 0000 - 0x0800 3FFF 16 KB
@@ -37,7 +38,7 @@ STM32F405RGT6, 1M flash, 中文数据手册P.59
 
 #define FLASH_Sector_11    ((uint16_t)0x0058)
 #define Flash_Addr         0x080E0000     //保存参数的flash起始地址, 地址必须4字节对齐
-#define NUMBER_PARA_        34
+#define NUMBER_PARA_        42
 #define Flash_AntiCogging_Addr    0x080F0000     //保存抗齿槽校准参数的flash起始地址
 /*****************************************************************************/
 uint32_t flash_reg[128];
@@ -120,6 +121,26 @@ void flash_para_read(void)
 		// encoder_config.pre_calibrated = flash_reg[32];                //是否已经校准
 		axis_config.startup_closed_loop_control = flash_reg[32];      //是否上电后进入闭环
 		anticogging_valid_ = flash_reg[33];                           //抗齿槽校准数据是否正常标志位
+
+		if (encoder_config.mode == MODE_HALL)
+		{
+			encoder_config.hall_polarity = (flash_reg[34] == 0xFFFFFFFFu) ? 0u : (uint8_t)(flash_reg[34] & 0x07u);
+			encoder_config.hall_polarity_calibrated = (flash_reg[35] == 1u) ? true : false;
+			for (i = 0u; i < 6u; ++i)
+			{
+				float edge_val = uint2float(flash_reg[36u + i]);
+				if ((flash_reg[36u + i] != 0xFFFFFFFFu) && isfinite(edge_val))
+				{
+					encoder_config.hall_edge_phcnt[i] = edge_val;
+				}
+				else
+				{
+					encoder_config.hall_edge_phcnt[i] = (float)i;
+				}
+				g_hall_encoder.edge_pos[i] = encoder_config.hall_edge_phcnt[i];
+			}
+			g_hall_encoder.config.polarity_xor = encoder_config.hall_polarity_calibrated ? encoder_config.hall_polarity : 0u;
+		}
 
 		update_current_controller_gains();
 		is_calibrated_ = 1;
@@ -323,6 +344,14 @@ void flash_para_write(void)
 	flash_reg[31] = float2uint(encoder_config.phase_offset_float);
 	flash_reg[32] = axis_config.startup_closed_loop_control;
 	flash_reg[33] = anticogging_valid_;
+	flash_reg[34] = encoder_config.hall_polarity;
+	flash_reg[35] = encoder_config.hall_polarity_calibrated;
+	flash_reg[36] = float2uint(encoder_config.hall_edge_phcnt[0]);
+	flash_reg[37] = float2uint(encoder_config.hall_edge_phcnt[1]);
+	flash_reg[38] = float2uint(encoder_config.hall_edge_phcnt[2]);
+	flash_reg[39] = float2uint(encoder_config.hall_edge_phcnt[3]);
+	flash_reg[40] = float2uint(encoder_config.hall_edge_phcnt[4]);
+	flash_reg[41] = float2uint(encoder_config.hall_edge_phcnt[5]);
 #else
 	flash_reg[0] = float2uint(motor_config.phase_resistance);
 	flash_reg[1] = float2uint(motor_config.phase_inductance);

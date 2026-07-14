@@ -90,8 +90,8 @@ void TIM1_PWM_Init(void)
 	TIM_BDTRConfig(TIM1, &TIM_BDTRInitStructure);
 	
   	NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_TIM10_IRQn;
-  	//NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
-	//NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 	
@@ -232,6 +232,8 @@ void TIM7_Init(void)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7,ENABLE);
 	
 	NVIC_InitStructure.NVIC_IRQChannel=TIM7_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 6;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd=ENABLE;
 	NVIC_Init(&NVIC_InitStructure); 
 	
@@ -306,9 +308,14 @@ void TIM7_IRQHandler(void)
 			flash_flag = 0;
 		}
 
+		#if (ENCODER_mode != MODE_HALL)
 		KTH7111_PLL_SampleAndUpdate(&kth7111_pll_);
 		kth7111_angle = KTH7111_PLL_GetFiltAngle(&kth7111_pll_);
 		angle_k = KTH7111_PLL_GetAccAngleDeg(&kth7111_pll_) / 2.0f;
+		#else
+		kth7111_angle = 0u;
+		angle_k = 0.0f;
+		#endif
 
 		// kth7111_angle = KTH7111_ReadSSIAngle();
 		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;

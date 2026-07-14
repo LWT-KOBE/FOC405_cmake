@@ -98,6 +98,7 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 #define  ERROR_SPINOUT_DETECTED                (1<<19)
 #define  ERROR_INVALID_ESTIMATE                (1<<20)
 #define  ERROR_UNKNOWN_PHASE_VEL               (1<<21)
+#define  ERROR_ILLEGAL_HALL_STATE              (1<<22)
 /****************************************************************************/
 //根据驱动板硬件设置参数
 //#define VBUS_S_DIVIDER_RATIO   18.73f    //电源分压电阻2.2k+39k
@@ -110,7 +111,7 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 //更改参数，烧写代码前请先清除flash中保存的参数（如果之前保存过的话）
 //电机配置参数，根据电机型号选择
 #define  MOTOR_type                 MOTOR_TYPE_HIGH_CURRENT   //MOTOR_TYPE_GIMBAL //MOTOR_TYPE_HIGH_CURRENT
-#define  MOTOR_pole_pairs                          7    //电机极对数
+#define  MOTOR_pole_pairs                         14    //电机极对数
 // #define  MOTOR_calibration_current                 6    //校准电流
 // #define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
 
@@ -126,9 +127,9 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 // #define  ENCODER_cpr                  16384      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,KTH7112=65536,MT6835=2097152,MODE_INCREMENTAL=4000,
 // #define  ENCODER_bandwidth             1000      //默认1000，hall电机的cpr比较小，可设置为100
 
-#define  ENCODER_mode        MODE_SPI_KTH7112    //编码器类型，共6种:MODE_INCREMENTAL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
-#define  ENCODER_cpr                  65536      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,KTH7112=65536,MT6835=2097152,MODE_INCREMENTAL=4000,
-#define  ENCODER_bandwidth             1000      //默认1000，hall电机的cpr比较小，可设置为100
+#define  ENCODER_mode        MODE_HALL          //编码器类型，共6种:MODE_INCREMENTAL,MODE_HALL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
+#define  ENCODER_cpr                     84      //HALL = pole_pairs * 6
+#define  ENCODER_bandwidth              100      //默认1000，hall电机的cpr比较小，可设置为100
 
 //控制模式，以下参数请熟练官方ODrive操作后再设置，参数的意义和大小与odrivetool中的设置一致
 #define  CONTROL_mode        CONTROL_MODE_VELOCITY_CONTROL  //控制模式:CONTROL_MODE_VOLTAGE_CONTROL,CONTROL_MODE_TORQUE_CONTROL,CONTROL_MODE_VELOCITY_CONTROL,CONTROL_MODE_POSITION_CONTROL
