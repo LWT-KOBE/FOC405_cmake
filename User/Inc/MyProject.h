@@ -128,9 +128,13 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 // #define  ENCODER_cpr                  16384      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,KTH7112=65536,MT6835=2097152,MODE_INCREMENTAL=4000,
 // #define  ENCODER_bandwidth             1000      //默认1000，hall电机的cpr比较小，可设置为100
 
-#define  ENCODER_mode        MODE_HALL          //编码器类型，共6种:MODE_INCREMENTAL,MODE_HALL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
-#define  ENCODER_cpr                     84      //HALL = pole_pairs * 6
-#define  ENCODER_bandwidth              100      //默认1000，hall电机的cpr比较小，可设置为100
+// #define  ENCODER_mode        MODE_HALL          //编码器类型，共6种:MODE_INCREMENTAL,MODE_HALL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
+// #define  ENCODER_cpr                     84      //HALL = pole_pairs * 6
+// #define  ENCODER_bandwidth              100      //默认1000，hall电机的cpr比较小，可设置为100
+
+#define  ENCODER_mode        MODE_SPI_MLX90520    //编码器类型，共6种:MODE_INCREMENTAL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
+#define  ENCODER_cpr                  65535      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,KTH7112=65536,MT6835=2097152,MODE_INCREMENTAL=4000,
+#define  ENCODER_bandwidth             1000      //默认1000，hall电机的cpr比较小，可设置为100
 
 //控制模式，以下参数请熟练官方ODrive操作后再设置，参数的意义和大小与odrivetool中的设置一致
 #define  CONTROL_mode        CONTROL_MODE_VELOCITY_CONTROL  //控制模式:CONTROL_MODE_VOLTAGE_CONTROL,CONTROL_MODE_TORQUE_CONTROL,CONTROL_MODE_VELOCITY_CONTROL,CONTROL_MODE_POSITION_CONTROL

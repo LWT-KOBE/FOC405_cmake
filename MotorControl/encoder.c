@@ -12,6 +12,9 @@
 #define  SPI_CS0_L   GPIO_ResetBits(GPIOB, GPIO_Pin_3)
 #define  SPI_CS0_H   GPIO_SetBits(GPIOB, GPIO_Pin_3)
 
+#define MLX90520_CS_L() GPIO_ResetBits(GPIOB, GPIO_Pin_3)
+#define MLX90520_CS_H() GPIO_SetBits(GPIOB, GPIO_Pin_3)
+
 #define  SPI3_TX_OFF() {GPIOC->MODER&=~(3<<(12*2));GPIOC->MODER|=0<<(12*2);}  //PC12(MOSI)输入浮空
 #define  SPI3_TX_ON()  {GPIOC->MODER&=~(3<<(12*2));GPIOC->MODER|=2<<(12*2);}  //PC12(MOSI)复用推挽输出
 /*****************************************************************************/
@@ -635,6 +638,46 @@ void encoder_zero_position(void)
 	vel_integrator_torque_ = 0.0f;
 }
 
+static uint8_t mlx90520_spi8(uint8_t tx)
+{
+	while (SPI_I2S_GetFlagStatus(SPI3, SPI_I2S_FLAG_TXE) == RESET);
+	SPI_I2S_SendData(SPI3, tx);
+	while (SPI_I2S_GetFlagStatus(SPI3, SPI_I2S_FLAG_RXNE) == RESET);
+	return (uint8_t)SPI_I2S_ReceiveData(SPI3);
+}
+
+static uint8_t mlx90520_crc8(const uint8_t *p, uint8_t len)
+{
+	uint8_t crc = 0;
+	for (uint8_t i = 0; i < len; i++) {
+		crc ^= p[i];
+		for (uint8_t b = 0; b < 8; b++) {
+			crc = (crc & 0x80) ? (uint8_t)((crc << 1) ^ 0x07) : (uint8_t)(crc << 1);
+		}
+	}
+	return crc;
+}
+
+bool MLX90520_ReadFrame(uint16_t *fc1, uint16_t *fc2)
+{
+	uint8_t rx[6];
+
+	MLX90520_CS_L();
+	mlx90520_spi8(0x00);       // FR command
+	for (uint8_t i = 0; i < 6; i++) {
+		rx[i] = mlx90520_spi8(0x00);
+	}
+	MLX90520_CS_H();
+
+	if ((rx[0] >> 4) != 0x5) return false;       // default frame-start pattern
+	if (mlx90520_crc8(rx, 5) != rx[5]) return false;
+
+	*fc1 = ((uint16_t)rx[1] << 8) | rx[2];
+	*fc2 = ((uint16_t)rx[3] << 8) | rx[4];
+	return true;
+}
+
+
 /*****************************************************************************/
 //初始化三种SPI接口的编码器的参数, 初始化I2C接口或者SPI接口
 void MagneticSensor_Init(void)
@@ -709,6 +752,9 @@ void MagneticSensor_Init(void)
 			SPI3_Init_KTH7112(SPI_CPOL_High);
 		// SPI3_Init_KTH7112(SPI_CPOL_Low);
 			break;
+		case MODE_SPI_MLX90520:
+		    SPI3_Init_MLX90520();
+		    break;
 	}
 }
 /*****************************************************************************/
@@ -920,6 +966,23 @@ void abs_spi_cb(void)
 				rawVal = KTH7112_ReadAngle_DMA();
 				pos_val = rawVal;
 				pos = rawVal;
+		}break;
+
+		case MODE_SPI_MLX90520:{
+			uint16_t fc1, fc2;
+
+			if (!MLX90520_ReadFrame(&fc1, &fc2)) {
+				return; // 不更新 pos_abs_，让现有 spi_error_rate_ 机制报错
+			}
+
+			// 方案 A：只用 16-bit FC1
+			pos = fc1;
+
+			// 方案 B：22-bit Vernier，前提是 FC1=CVDP，FC2=PA
+			// uint32_t cvdp = fc1 & 0x3f;
+			// pos = (cvdp << 16) | fc2;
+
+			pos_val = pos;
 		}break;
 		case MODE_INCREMENTAL:
 			encoder_set_error(ERROR_UNSUPPORTED_ENCODER_MODE);

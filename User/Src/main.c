@@ -44,7 +44,7 @@ int main(void)
 	USART2_Init(115200);        //排针的GPIO3为TXD2，GPIO4为RXD2，GND共地
 	usart2_set_baud(baudrate_115200);  //设置波特率
 	#if (ENCODER_mode != MODE_HALL)
-	SPI1_Init_KTH7111_SSI();
+	// SPI1_Init_KTH7111_SSI();
 	#endif
 	tim14_InitTick();           //1ms中断初始化，为系统提供计时
 	TIM1_PWM_Init();            //M0接口PWM配置，但没有使能
@@ -54,7 +54,7 @@ int main(void)
 	ADC3_TRGO_Init();           //配置注入组，检测m0_phC，等待TIM1触发
 	TIM2_Init();                //触发ADC1的规则转换
 	#if (ENCODER_mode != MODE_HALL)
-	KTH7111_TIM7_PLL_Init();
+	// KTH7111_TIM7_PLL_Init();
 	#endif
 	// TIM7_Init();
 

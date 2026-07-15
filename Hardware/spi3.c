@@ -56,6 +56,50 @@ void SPI3_Init_(uint16_t spi_cpol)
 	SPI_Cmd(SPI3, ENABLE);
 }
 
+void SPI3_Init_MLX90520(void)
+{
+	GPIO_InitTypeDef gpio;
+	SPI_InitTypeDef spi;
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
+
+	gpio.GPIO_Pin = GPIO_Pin_3; // PB3 CS
+	gpio.GPIO_Mode = GPIO_Mode_OUT;
+	gpio.GPIO_OType = GPIO_OType_PP;
+	gpio.GPIO_Speed = GPIO_Speed_50MHz;
+	gpio.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOB, &gpio);
+	GPIO_SetBits(GPIOB, GPIO_Pin_3);
+
+	gpio.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12; // SCK MISO MOSI
+	gpio.GPIO_Mode = GPIO_Mode_AF;
+	gpio.GPIO_OType = GPIO_OType_PP;
+	gpio.GPIO_Speed = GPIO_Speed_50MHz;
+	gpio.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOC, &gpio);
+
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource10, GPIO_AF_SPI3);
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource11, GPIO_AF_SPI3);
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource12, GPIO_AF_SPI3);
+
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3, ENABLE);
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3, DISABLE);
+
+	SPI_I2S_DeInit(SPI3);
+	spi.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+	spi.SPI_Mode = SPI_Mode_Master;
+	spi.SPI_DataSize = SPI_DataSize_16b;
+	spi.SPI_CPOL = SPI_CPOL_Low;
+	spi.SPI_CPHA = SPI_CPHA_1Edge;
+	spi.SPI_NSS = SPI_NSS_Soft;
+	spi.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_16;
+	spi.SPI_FirstBit = SPI_FirstBit_MSB;
+	spi.SPI_CRCPolynomial = 7;
+	SPI_Init(SPI3, &spi);
+	SPI_Cmd(SPI3, ENABLE);
+}
+
 // void SPI3_Init_KTH7112(uint16_t spi_cpol)
 // {
 // 	GPIO_InitTypeDef GPIO_InitStructure;
