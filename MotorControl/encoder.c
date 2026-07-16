@@ -969,14 +969,20 @@ void abs_spi_cb(void)
 		}break;
 
 		case MODE_SPI_MLX90520:{
-			uint32_t raw22;
+				uint16_t fc1, fc2;
 
-			// if (!MLX90520_ReadRaw22(&raw22)) {
-			// 	return; // 不置 abs_spi_pos_updated_，让现有 SPI 错误率逻辑处理
-			// }
-			//
-			// pos_val = raw22;
-			// pos = raw22 % encoder_config.cpr;
+				if (!MLX90520_ReadFrame(&fc1, &fc2)) {
+					return; // 不更新 pos_abs_，让现有 spi_error_rate_ 机制报错
+				}
+
+				// 方案 A：只用 16-bit FC1
+				// pos = fc1;
+
+				// 方案 B：22-bit Vernier，前提是 FC1=CVDP，FC2=PA
+				uint32_t cvdp = fc1 & 0x3f;
+				pos = (cvdp << 16) | fc2;
+
+				pos_val = pos;
 		}break;
 		case MODE_INCREMENTAL:
 			encoder_set_error(ERROR_UNSUPPORTED_ENCODER_MODE);
