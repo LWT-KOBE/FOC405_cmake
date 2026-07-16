@@ -669,8 +669,8 @@ bool MLX90520_ReadFrame(uint16_t *fc1, uint16_t *fc2)
 	}
 	MLX90520_CS_H();
 
-	if ((rx[0] >> 4) != 0x5) return false;       // default frame-start pattern
-	if (mlx90520_crc8(rx, 5) != rx[5]) return false;
+	// if ((rx[0] >> 4) != 0x5) return false;       // default frame-start pattern
+	// if (mlx90520_crc8(rx, 5) != rx[5]) return false;
 
 	*fc1 = ((uint16_t)rx[1] << 8) | rx[2];
 	*fc2 = ((uint16_t)rx[3] << 8) | rx[4];
@@ -969,20 +969,14 @@ void abs_spi_cb(void)
 		}break;
 
 		case MODE_SPI_MLX90520:{
-			uint16_t fc1, fc2;
+			uint32_t raw22;
 
-			if (!MLX90520_ReadFrame(&fc1, &fc2)) {
-				return; // 不更新 pos_abs_，让现有 spi_error_rate_ 机制报错
-			}
-
-			// 方案 A：只用 16-bit FC1
-			pos = fc1;
-
-			// 方案 B：22-bit Vernier，前提是 FC1=CVDP，FC2=PA
-			// uint32_t cvdp = fc1 & 0x3f;
-			// pos = (cvdp << 16) | fc2;
-
-			pos_val = pos;
+			// if (!MLX90520_ReadRaw22(&raw22)) {
+			// 	return; // 不置 abs_spi_pos_updated_，让现有 SPI 错误率逻辑处理
+			// }
+			//
+			// pos_val = raw22;
+			// pos = raw22 % encoder_config.cpr;
 		}break;
 		case MODE_INCREMENTAL:
 			encoder_set_error(ERROR_UNSUPPORTED_ENCODER_MODE);
@@ -1010,6 +1004,7 @@ void sample_now(void)
 		case MODE_SPI_TLE5012B:
 		case MODE_SPI_MT6835:
 		case MODE_SPI_KTH7112:
+	    case MODE_SPI_MLX90520:
 			abs_spi_cb();
 			break;
 	}
@@ -1244,7 +1239,8 @@ bool encoder_update(void)
         case MODE_SPI_MA730:
         case MODE_SPI_TLE5012B:
 		case MODE_SPI_KTH7112:
-        case MODE_SPI_MT6835: {
+        case MODE_SPI_MT6835:
+    	case MODE_SPI_MLX90520: {  // SPI绝对式编码器模式
             // 检查绝对位置是否已更新（正常情况下每次应为true，因为sample_now()刚被执行过）
             if(abs_spi_pos_updated_ == false)  
             {
@@ -1288,7 +1284,7 @@ bool encoder_update(void)
     // 对于SPI绝对式编码器，直接使用锁存的绝对位置
     if((encoder_config.mode==MODE_SPI_AS5047P)||(encoder_config.mode==MODE_SPI_MT6701)||
        (encoder_config.mode==MODE_SPI_MA730)||(encoder_config.mode==MODE_SPI_TLE5012B)||
-       (encoder_config.mode==MODE_SPI_MT6835)||(encoder_config.mode==MODE_SPI_KTH7112))
+       (encoder_config.mode==MODE_SPI_MT6835)||(encoder_config.mode==MODE_SPI_KTH7112) || (encoder_config.mode==MODE_SPI_MLX90520))
         count_in_cpr_ = pos_abs_latched;
     
     // 保存上一次的CPR内位置（用于计算循环位置）

@@ -89,7 +89,7 @@ void SPI3_Init_MLX90520(void)
 	SPI_I2S_DeInit(SPI3);
 	spi.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
 	spi.SPI_Mode = SPI_Mode_Master;
-	spi.SPI_DataSize = SPI_DataSize_16b;
+	spi.SPI_DataSize = SPI_DataSize_8b;
 	spi.SPI_CPOL = SPI_CPOL_Low;
 	spi.SPI_CPHA = SPI_CPHA_1Edge;
 	spi.SPI_NSS = SPI_NSS_Soft;
