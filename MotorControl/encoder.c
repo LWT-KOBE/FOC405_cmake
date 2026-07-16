@@ -354,6 +354,15 @@ void MagneticSensor_Init(void)
 			SPI3_Init_KTH7112(SPI_CPOL_High);
 		// SPI3_Init_KTH7112(SPI_CPOL_Low);
 			break;
+		case MODE_SPI_MLX90520:
+			MLX90520_SPI3_Init();
+
+			// 上电后先等 MLX90520 启动，datasheet 是 ms 级。
+			delay_us(3000);
+
+			// 可选：提前进入 Frame Read。也可以第一次 ReadRaw22 时自动进入。
+			MLX90520_StartFrameRead();
+			break;
 	}
 }
 /*****************************************************************************/
@@ -560,6 +569,17 @@ void abs_spi_cb(void)
 				pos_val = rawVal;
 				pos = rawVal;
 		}break;
+		case MODE_SPI_MLX90520: {
+			uint32_t raw22;
+			MLX90520_Status_t st = MLX90520_ReadRaw22(&raw22);
+
+			if (st != MLX90520_OK) {
+				return; // 不置 abs_spi_pos_updated_，让现有 encoder_update() 的 SPI 错误率机制处理
+			}
+
+			pos_val = raw22;
+			pos = raw22 % encoder_config.cpr;
+		} break;
 		case MODE_INCREMENTAL:
 			encoder_set_error(ERROR_UNSUPPORTED_ENCODER_MODE);
 			break;
@@ -583,6 +603,7 @@ void sample_now(void)
 		case MODE_SPI_TLE5012B:
 		case MODE_SPI_MT6835:
 		case MODE_SPI_KTH7112:
+		case MODE_SPI_MLX90520:
 			abs_spi_cb();
 			break;
 	}
@@ -740,6 +761,7 @@ bool encoder_update(void)
         case MODE_SPI_MA730:
         case MODE_SPI_TLE5012B:
 		case MODE_SPI_KTH7112:
+    	case MODE_SPI_MLX90520:
         case MODE_SPI_MT6835: {
             // 检查绝对位置是否已更新（正常情况下每次应为true，因为sample_now()刚被执行过）
             if(abs_spi_pos_updated_ == false)  
@@ -784,7 +806,7 @@ bool encoder_update(void)
     // 对于SPI绝对式编码器，直接使用锁存的绝对位置
     if((encoder_config.mode==MODE_SPI_AS5047P)||(encoder_config.mode==MODE_SPI_MT6701)||
        (encoder_config.mode==MODE_SPI_MA730)||(encoder_config.mode==MODE_SPI_TLE5012B)||
-       (encoder_config.mode==MODE_SPI_MT6835)||(encoder_config.mode==MODE_SPI_KTH7112))
+       (encoder_config.mode==MODE_SPI_MT6835)||(encoder_config.mode==MODE_SPI_KTH7112)||(encoder_config.mode==MODE_SPI_MLX90520))
         count_in_cpr_ = pos_abs_latched;
     
     // 保存上一次的CPR内位置（用于计算循环位置）

@@ -21,6 +21,7 @@ typedef enum
 	MODE_SPI_TLE5012B,
 	MODE_SPI_MT6835,
 	MODE_SPI_KTH7112,
+	MODE_SPI_MLX90520,
 } ENCODER_enum;
 
 typedef enum {
