@@ -40,10 +40,45 @@ bool vel_estimate_valid_ = false;   //速度估算是否可用
 
 int16_t  tim_cnt_sample_;
 
+static uint8_t mlx90520_abs_initialized_ = 0u;
+static uint32_t mlx90520_raw_last_ = 0u;
+static int32_t mlx90520_period_index_ = 0;
+
+volatile uint32_t mlx90520_debug_raw22_ = 0u;
+volatile uint32_t mlx90520_debug_expanded_ = 0u;
+volatile int32_t mlx90520_debug_period_index_ = 0;
+volatile uint32_t mlx90520_debug_status_ = 0u;
+
+static uint32_t mlx90520_expand_repeated_position(uint32_t raw22)
+{
+    const int32_t sensor_cpr = (int32_t)MLX90520_SENSOR_CPR;
+    const int32_t periods_per_rev = (int32_t)MLX90520_PERIODS_PER_REV;
+    uint32_t raw = raw22 % (uint32_t)sensor_cpr;
+
+    if (mlx90520_abs_initialized_ == 0u) {
+        mlx90520_abs_initialized_ = 1u;
+        mlx90520_raw_last_ = raw;
+        mlx90520_period_index_ = 0;
+    } else {
+        int32_t delta = (int32_t)raw - (int32_t)mlx90520_raw_last_;
+
+        if (delta > (sensor_cpr / 2)) {
+            mlx90520_period_index_--;
+        } else if (delta < -(sensor_cpr / 2)) {
+            mlx90520_period_index_++;
+        }
+
+        mlx90520_period_index_ = mod(mlx90520_period_index_, periods_per_rev);
+        mlx90520_raw_last_ = raw;
+    }
+
+    return (uint32_t)mlx90520_period_index_ * (uint32_t)sensor_cpr + raw;
+}
+
 bool abs_spi_pos_updated_ = false;  //绝对值编码器角度是否被正确读出
 /*****************************************************************************/
 /*****************************************************************************/
-void encoder_set_error(uint32_t error) 
+void encoder_set_error(uint32_t error)
 {
 	vel_estimate_valid_ = false;
 	pos_estimate_valid_ = false;
@@ -272,7 +307,8 @@ void encoder_zero_position(void)
 		(encoder_config.mode == MODE_SPI_MA730) ||
 		(encoder_config.mode == MODE_SPI_TLE5012B) ||
 		(encoder_config.mode == MODE_SPI_MT6835) ||
-		(encoder_config.mode == MODE_SPI_KTH7112))
+		(encoder_config.mode == MODE_SPI_KTH7112) ||
+		(encoder_config.mode == MODE_SPI_MLX90520))
 	{
 		current_count_in_cpr = pos_abs_;
 	}
@@ -324,9 +360,9 @@ void MagneticSensor_Init(void)
 	encoder_config.use_index_offset = true;
 	encoder_config.enable_phase_interpolation = true; // Use velocity to interpolate inside the count state
 	encoder_config.find_idx_on_lockin_only = false; // Only be sensitive during lockin scan constant vel state
-	
+
 	update_pll_gains();    //锁相环参数整定
-	
+
 	switch(encoder_config.mode)
 	{
 		case MODE_INCREMENTAL:
@@ -334,7 +370,7 @@ void MagneticSensor_Init(void)
 			break;
 		case MODE_HALL:
 			TIM3_InputCapture_Config(); //HALL
-			break;  					
+			break;
 		case MODE_SPI_AS5047P:
 			SPI3_Init_(SPI_CPOL_Low);    //AS5047P
 			break;
@@ -356,6 +392,13 @@ void MagneticSensor_Init(void)
 			break;
 		case MODE_SPI_MLX90520:
 			MLX90520_SPI3_Init();
+			mlx90520_abs_initialized_ = 0u;
+			mlx90520_raw_last_ = 0u;
+			mlx90520_period_index_ = 0;
+			mlx90520_debug_raw22_ = 0u;
+			mlx90520_debug_expanded_ = 0u;
+			mlx90520_debug_period_index_ = 0;
+			mlx90520_debug_status_ = 0u;
 
 			// 上电后先等 MLX90520 启动，datasheet 是 ms 级。
 			delay_us(3000);
@@ -374,18 +417,18 @@ bool run_offset_calibration(void)
 {
 	uint32_t  i;
 	const float start_lock_duration = 1.0f;
-	
+
 	// Require index found if enabled
 	if (encoder_config.use_index && !index_found_)
 	{
 		encoder_set_error(ERROR_INDEX_NOT_FOUND_YET);
 		return false;
 	}
-	
+
 	// We use shadow_count_ to do the calibration, but the offset is used by count_in_cpr_
 	// Therefore we have to sync them for calibration
 	shadow_count_ = count_in_cpr_;
-	
+
 	// Reset state variables
 	memset(&openloop_controller_,0, sizeof(OPENLOOP_struct));   //清零openloop的结构体
 //	openloop_controller_.Idq_setpoint_.d = 0.0f;
@@ -394,7 +437,7 @@ bool run_offset_calibration(void)
 //	openloop_controller_.Vdq_setpoint_.q = 0.0f;
 //	openloop_controller_.phase_ = 0.0f;
 //	openloop_controller_.phase_vel_ = 0.0f;
-	
+
 	float max_current_ramp = motor_config.calibration_current / start_lock_duration * 2.0f;
 	openloop_controller_.max_current_ramp_ = max_current_ramp;
 	openloop_controller_.max_voltage_ramp_ = max_current_ramp;
@@ -404,14 +447,14 @@ bool run_offset_calibration(void)
 	openloop_controller_.target_vel_ = 0.0f;
 	openloop_controller_.total_distance_ = 0.0f;
 	openloop_controller_.phase_ = wrap_pm_pi(0 - encoder_config.calib_scan_distance / 2.0f);
-	
+
 	//enable_current_control_src_ = (motor_config.motor_type != MOTOR_TYPE_GIMBAL);
 	Idq_setpoint_src_ = &openloop_controller_.Idq_setpoint_;   //指针指向
 	Vdq_setpoint_src_ = &openloop_controller_.Vdq_setpoint_;
 	phase_src_ = &openloop_controller_.phase_;
 	phase_vel_src_ = &openloop_controller_.phase_vel_;
 	motor_phase_vel_src_ = &openloop_controller_.phase_vel_;
-	
+
 	arm();
 	// go to start position of forward scan for start_lock_duration to get ready to scan
 	for (i=0; i<1000; i++)   //电机定位1秒钟，电角度0°
@@ -419,14 +462,14 @@ bool run_offset_calibration(void)
 		if (!is_armed_)return false; // TODO: return "disarmed" error code
 		delay_us(1000);   //1ms
 	}
-	
+
 	int32_t init_enc_val = shadow_count_;   //读取当前角度。shadow_count_在encoder_update()函数中读角度时更新
 	uint32_t num_steps = 0;
 	int64_t encvaluesum = 0;
-	
+
 	openloop_controller_.target_vel_ = encoder_config.calib_scan_omega;   //设置正转速度 4Pi/s
 	openloop_controller_.total_distance_ = 0.0f;
-	
+
 	// scan forward
 	while (is_armed_)
 	{
@@ -435,7 +478,7 @@ bool run_offset_calibration(void)
 		num_steps++;      //大约转了4秒，转完约等于4000。    开环控制启动和停止都需要时间，所以会有误差
 		delay_us(1000);   //1ms
 	}
-	
+
 	// Check response and direction
 	if (shadow_count_ > init_enc_val + 8)encoder_config.direction = 1;        //当前角度比初始角度大就是正转
 	else if (shadow_count_ < init_enc_val - 8)encoder_config.direction = -1;  //否则就是反转
@@ -445,7 +488,7 @@ bool run_offset_calibration(void)
 		disarm();
 		return false;
 	}
-	
+
 	// Check CPR
 	float elec_rad_per_enc = motor_config.pole_pairs * 2 * M_PI * (1.0f / (float)(encoder_config.cpr));
 	float expected_encoder_delta = encoder_config.calib_scan_distance / elec_rad_per_enc;   //理论上的角度差值
@@ -457,9 +500,9 @@ bool run_offset_calibration(void)
 		disarm();
 		return false;
 	}
-	
+
 	openloop_controller_.target_vel_ = -encoder_config.calib_scan_omega;  //设置反转速度 -4Pi/s
-	
+
 	// scan backwards
 	while (is_armed_)
 	{
@@ -468,16 +511,16 @@ bool run_offset_calibration(void)
 		num_steps++;      //大概转了4秒钟，4000。 num_steps此时约为8000
 		delay_us(1000);   //1ms
 	}
-	
+
 	// Motor disarmed because of an error
 	if (!is_armed_)return false;
-	
+
 	disarm();
-	
+
 	encoder_config.phase_offset = encvaluesum / num_steps;   //累加后的角度/累加次数=中间值，比如1——100累加=5050 /100=50.5。在这里，phase_offset就是电角度为8Pi时对应的角度
 	int32_t residual = encvaluesum - ((int64_t)encoder_config.phase_offset * (int64_t)num_steps);
 	encoder_config.phase_offset_float = (float)residual / (float)num_steps + 0.5f;  // add 0.5 to center-align state to phase  其实用不了这么高的精度，小数部分可有可无
-	
+
 	is_ready_ = true;
 	return true;
 }
@@ -496,34 +539,34 @@ uint8_t crc_high_first(uint8_t *ptr, int len)  //用于MT6835
 {
 	uint8_t i;
 	uint8_t crc=0;
-	
+
 	while(len--)
 	{
 		crc ^= *ptr++;
-		
+
 		for(i=0;i<8;i++)
 		{
 			if(crc&0x80)crc=(crc<<1)^0x07;
 			else  crc=(crc<<1);
 		}
 	}
-	
+
 	return crc;
 }
 /*****************************************************************************/
-uint32_t pos,pos_val;
+uint32_t pos,pos_val,mlx90520_raw;
 void abs_spi_cb(void)
 {
 	uint16_t rawVal;
 	// uint32_t pos;
-	
+
 	switch(encoder_config.mode)
 	{
 		case MODE_SPI_AS5047P:
 			SPI_CS0_L;
 			rawVal = SPIx_ReadWriteByte(0xffff);  //encoder.hpp 第144行
 			SPI_CS0_H;
-		
+
 			// if(ams_parity(rawVal) || ((rawVal >> 14) & 1))return;
 			pos = (rawVal & 0x3fff);
 			break;
@@ -548,18 +591,18 @@ void abs_spi_cb(void)
 			uint16_t rawVal2=0;
 			uint8_t p[3];
 			uint8_t crc;
-			
+
 			SPI_CS0_L;
 			SPIx_ReadWriteByte(0xA003);
 			rawVal = SPIx_ReadWriteByte(0);
 			rawVal2= SPIx_ReadWriteByte(0);
 			SPI_CS0_H;
-			
+
 			p[0]=rawVal>>8;
 			p[1]=rawVal;
 			p[2]=rawVal2>>8;
 			crc=rawVal2;
-			
+
 			if(crc_high_first(p,3)!=crc)return;
 			pos = ((rawVal<<5)|(rawVal2>>11));
 		} break;
@@ -571,14 +614,21 @@ void abs_spi_cb(void)
 		}break;
 		case MODE_SPI_MLX90520: {
 			uint32_t raw22;
+			uint32_t expanded;
 			MLX90520_Status_t st = MLX90520_ReadRaw22(&raw22);
 
 			if (st != MLX90520_OK) {
+				mlx90520_debug_status_ = (uint32_t)st;
 				return; // 不置 abs_spi_pos_updated_，让现有 encoder_update() 的 SPI 错误率机制处理
 			}
 
+			expanded = mlx90520_expand_repeated_position(raw22);
 			pos_val = raw22;
-			pos = raw22 % encoder_config.cpr;
+			mlx90520_debug_raw22_ = raw22;
+			mlx90520_debug_expanded_ = expanded;
+			mlx90520_debug_period_index_ = mlx90520_period_index_;
+			mlx90520_debug_status_ = (uint32_t)MLX90520_OK;
+			pos = expanded % encoder_config.cpr;
 		} break;
 		case MODE_INCREMENTAL:
 			encoder_set_error(ERROR_UNSUPPORTED_ENCODER_MODE);

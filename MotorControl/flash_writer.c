@@ -62,6 +62,36 @@ float uint2float(uint32_t var)
 	a.da = var;
 	return a.f;
 }
+
+static void invalidate_saved_encoder_calibration(void)
+{
+	encoder_config.pre_calibrated = false;
+	encoder_config.direction = 0;
+	encoder_config.phase_offset = 0;
+	encoder_config.phase_offset_float = 0.0f;
+	axis_config.startup_closed_loop_control = false;
+	is_calibrated_ = false;
+}
+
+static void apply_compiled_encoder_config_guard(void)
+{
+	uint8_t encoder_config_changed = 0u;
+
+	if ((uint32_t)encoder_config.mode != (uint32_t)ENCODER_mode) {
+		encoder_config_changed = 1u;
+	}
+	if ((uint32_t)encoder_config.cpr != (uint32_t)ENCODER_cpr) {
+		encoder_config_changed = 1u;
+	}
+
+	encoder_config.mode = ENCODER_mode;
+	encoder_config.cpr = ENCODER_cpr;
+	encoder_config.bandwidth = ENCODER_bandwidth;
+
+	if (encoder_config_changed) {
+		invalidate_saved_encoder_calibration();
+	}
+}
 /*****************************************************************************/
 void flash_para_read(void)
 {
@@ -160,9 +190,9 @@ void flash_para_read(void)
 		// update_current_controller_gains();
 		// is_calibrated_ = 1;
 
+	apply_compiled_encoder_config_guard();
 
-
-	if(anticogging_valid_)   //如果抗齿槽校准数据正常，读出全部数据
+	if(anticogging_valid_)
 	{
 		for(i=0; i<COG_num ;i++)
 		{
