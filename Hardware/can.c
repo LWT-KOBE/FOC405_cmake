@@ -696,7 +696,7 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_GET_ENCODER_ESTIMATES:
-
+					OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,pos_estimate_,vel_estimate_,&ODSendData);
 						break;
 
 					case MSG_GET_ENCODER_COUNT:
@@ -748,6 +748,7 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_GET_IQ:
 						// 获取电机电流
+						OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_IQ,8,Idq_setpoint_.q,Iq_measured,&ODSendData);
 						break;
 
 					case MSG_SET_MIT_CONTROL:
