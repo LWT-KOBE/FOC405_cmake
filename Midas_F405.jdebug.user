@@ -1,6 +1,5 @@
 
 
-
 Breakpoint=F:/Midas/Midas_F405/MotorControl/encoder.c:489:39, State=BP_STATE_DISABLED
 GraphedExpression="pos", DisplayFormat=DISPLAY_FORMAT_DEC, Color=#e56a6f, Show=0
 GraphedExpression="kth7111_angle", Color=#35792b, Show=0
@@ -8,37 +7,22 @@ GraphedExpression="vel_estimate_", Color=#769dda
 GraphedExpression="input_vel_", Color=#b14f0d
 GraphedExpression="angle_k", Color=#b3c38e, Show=0
 GraphedExpression="Id_measured", Color=#ab7b05, Show=0
-OpenDocument="open_loop_controller.c", FilePath="F:/Midas/Midas_F405/MotorControl/open_loop_controller.c", Line=11
-OpenDocument="usbd_core.c", FilePath="F:/Midas/Midas_F405/USB_Device/src/usbd_core.c", Line=171
-OpenDocument="main.c", FilePath="F:/Midas/Midas_F405/User/Src/main.c", Line=26
-OpenDocument="utils.c", FilePath="F:/Midas/Midas_F405/MotorControl/utils.c", Line=124
-OpenDocument="startup_stm32f40xx.s", FilePath="F:/Midas/Midas_F405/Startup/startup_stm32f40xx.s", Line=55
-OpenDocument="core_cmInstr.h", FilePath="F:/Midas/Midas_F405/Core/Inc/core_cmInstr.h", Line=404
-OpenDocument="spi3.c", FilePath="F:/Midas/Midas_F405/Hardware/spi3.c", Line=237
-OpenDocument="stm32fxxx_it.c", FilePath="F:/Midas/Midas_F405/USB_App/src/stm32fxxx_it.c", Line=57
-OpenDocument="delay.c", FilePath="F:/Midas/Midas_F405/Sys/delay.c", Line=0
-OpenDocument="stm32f4xx_tim.c", FilePath="F:/Midas/Midas_F405/Libraries/Src/stm32f4xx_tim.c", Line=2245
-OpenDocument="motor.c", FilePath="F:/Midas/Midas_F405/MotorControl/motor.c", Line=336
-OpenDocument="foc.h", FilePath="F:/Midas/Midas_F405/MotorControl/foc.h", Line=0
-OpenDocument="encoder.c", FilePath="F:/Midas/Midas_F405/MotorControl/encoder.c", Line=264
-OpenDocument="can.c", FilePath="F:/Midas/Midas_F405/Hardware/can.c", Line=301
-OpenDocument="stm32f4xx_rcc.c", FilePath="F:/Midas/Midas_F405/Libraries/Src/stm32f4xx_rcc.c", Line=2203
 OpenToolbar="Debug", Floating=0, x=0, y=0
-OpenWindow="Registers 1", DockArea=RIGHT, x=0, y=1, w=300, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, FilteredItems=[], RefreshRate=1
-OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=300, h=1083, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Registers 1", DockArea=RIGHT, x=0, y=1, w=300, h=444, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, FilteredItems=[], RefreshRate=1
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=300, h=1071, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Memory 1", DockArea=BOTTOM, x=2, y=0, w=1089, h=396, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x0
 OpenWindow="Watched Data 1", DockArea=LEFT, x=0, y=0, w=855, h=1489, TabPos=0, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=855, h=1489, TabPos=1, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Data Sampling", DockArea=BOTTOM, x=0, y=0, w=1697, h=396, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=1, UniformSampleSpacing=0
 OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=1052, h=396, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
-TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Source"], ColWidths=[1614;140;100;124;1190]
-TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh"], ColWidths=[374;366;145;110]
-TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[172;210;210;196;210;224;168;224;210]
-TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";" pos";" kth7111_angle";" vel_estimate_";" input_vel_";" angle_k";" Id_measured"], ColWidths=[100;100;100;100;100;100;100;959]
+TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Source"], ColWidths=[1614;140;100;124;124]
+TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[172;210;112;210;224;136;160;184;280]
+TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";" pos";" kth7111_angle";" vel_estimate_";" input_vel_";" angle_k";" Id_measured"], ColWidths=[100;100;100;100;100;100;100;997]
 TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
 TableHeader="Registers 1", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Description"], ColWidths=[107;196;434]
 TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh"], ColWidths=[374;366;145;110]
 TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[200;100;100;312]
 WatchedExpression="kth7112_angle", RefreshRate=5, Window=Watched Data 1
 WatchedExpression="current_state_", RefreshRate=5, Window=Watched Data 1

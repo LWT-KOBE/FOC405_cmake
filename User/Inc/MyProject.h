@@ -104,7 +104,7 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 //根据驱动板硬件设置参数
 //#define VBUS_S_DIVIDER_RATIO   18.73f    //电源分压电阻2.2k+39k
 #define VBUS_S_DIVIDER_RATIO   19.0f    //电源分压电阻1k+18k
-#define SHUNT_RESISTANCE       0.001f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
+#define SHUNT_RESISTANCE       0.002f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
 // #define SHUNT_RESISTANCE       0.001f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
 // #define SHUNT_RESISTANCE       0.005f    //采样电阻，如果是0.5mΩ=0.0005f,1mΩ=0.001f
 #define PHASE_CURRENT_GAIN     20.0f     //电流采样运放倍数，20倍
@@ -112,8 +112,8 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 //更改参数，烧写代码前请先清除flash中保存的参数（如果之前保存过的话）
 //电机配置参数，根据电机型号选择
 #define  MOTOR_type                 MOTOR_TYPE_HIGH_CURRENT   //MOTOR_TYPE_GIMBAL //MOTOR_TYPE_HIGH_CURRENT
-// #define  MOTOR_pole_pairs                          7    //电机极对数
-#define  MOTOR_pole_pairs                          14    //电机极对数
+#define  MOTOR_pole_pairs                          7    //电机极对数
+// #define  MOTOR_pole_pairs                          14    //电机极对数
 // #define  MOTOR_calibration_current                 6    //校准电流
 // #define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
 
