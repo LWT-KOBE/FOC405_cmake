@@ -4,8 +4,13 @@ CANSendStruct_t ODSendData;
 float En_d40_angle = 0;
 int32_t En_d40_raw = 0;
 
-uint8_t OD_CANID; //CAN的ID
+uint8_t OD_CANID = 0; //CAN的ID
 uint8_t OD_CAN_BaudRate; //波特率
+
+static inline uint8_t can_is_query_request(const CanRxMsg *msg)
+{
+    return (msg->IDE == CAN_Id_Standard) && (msg->RTR == CAN_RTR_Remote);
+}
 // CAN1初始化函数
 void CAN1_Init(void)
 {
@@ -61,7 +66,7 @@ void CAN1_Init(void)
 	CAN_ITConfig(CAN1,CAN_IT_FMP0,ENABLE);//FIFO0消息挂起中断允许
 
 
-	NVIC_InitStructure.NVIC_IRQChannel = CAN2_RX0_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel = CAN1_RX0_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;// 主优先级为4
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;// 次优先级为0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -116,7 +121,7 @@ void CAN1_Mode_Init(uint8_t tsjw,uint8_t tbs2,uint8_t tbs1,uint16_t brp,uint8_t 
 	CAN_InitStructure.CAN_TTCM=DISABLE;		//非时间触发通信模式
 	CAN_InitStructure.CAN_ABOM=ENABLE;		//软件自动离线管理
 	CAN_InitStructure.CAN_AWUM=ENABLE;		//睡眠模式通过软件唤醒(清除CAN->MCR的SLEEP位)
-	CAN_InitStructure.CAN_NART=DISABLE;		//禁止报文自动传送
+	CAN_InitStructure.CAN_NART=ENABLE;		//禁用自动重传
 	CAN_InitStructure.CAN_RFLM=DISABLE;		//报文不锁定,新的覆盖旧的
 	CAN_InitStructure.CAN_TXFP=DISABLE;		//优先级由报文标识符决定
 
@@ -631,10 +636,6 @@ u8 flag_iap;
 void CAN1_RX0_IRQHandler(void){
 	//CanRxMsg can1_rx_msg;
 	if (CAN_GetITStatus(CAN1,CAN_IT_FMP0)!= RESET){
-		// 清除中断标志和标志位
-		CAN_ClearITPendingBit(CAN1, CAN_IT_FF0);
-		CAN_ClearFlag(CAN1, CAN_FLAG_FF0);
-
 		// 从接收 FIFO 中读取消息
 		CAN_Receive(CAN1, CAN_FIFO0, &can1_rx_msg);
 
@@ -670,6 +671,13 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_GET_MOTOR_ERROR:
+						if (can_is_query_request(&can1_rx_msg)) {
+							ODSendData.data[0] = (uint8_t)motor_error;
+							ODSendData.data[1] = (uint8_t)(motor_error >> 8);
+							ODSendData.data[2] = (uint8_t)(motor_error >> 16);
+							ODSendData.data[3] = (uint8_t)(motor_error >> 24);
+							OdriveSendData(CAN1,OD_CANID,MSG_GET_MOTOR_ERROR,4,&ODSendData);
+						}
 
 						// 处理获取电机错误消息
             			break;
@@ -684,6 +692,7 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_SET_AXIS_NODE_ID:
 
+						OD_CANID = can1_rx_msg.Data[0];
 						break;
 
 					case MSG_SET_AXIS_REQUESTED_STATE:
@@ -696,7 +705,9 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_GET_ENCODER_ESTIMATES:
-					OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,pos_estimate_,vel_estimate_,&ODSendData);
+						if (can_is_query_request(&can1_rx_msg)) {
+							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,pos_estimate_,vel_estimate_,&ODSendData);
+						}
 						break;
 
 					case MSG_GET_ENCODER_COUNT:
@@ -748,7 +759,9 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_GET_IQ:
 						// 获取电机电流
-						OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_IQ,8,Idq_setpoint_.q,Iq_measured,&ODSendData);
+						if (can_is_query_request(&can1_rx_msg)) {
+							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_IQ,8,Idq_setpoint_.q,Iq_measured,&ODSendData);
+						}
 						break;
 
 					case MSG_SET_MIT_CONTROL:
