@@ -4,7 +4,7 @@ CANSendStruct_t ODSendData;
 float En_d40_angle = 0;
 int32_t En_d40_raw = 0;
 
-uint8_t OD_CANID = 0; //CAN的ID
+uint8_t OD_CANID = 1; //CAN的ID
 uint8_t OD_CAN_BaudRate; //波特率
 
 static inline uint8_t can_is_query_request(const CanRxMsg *msg)
@@ -236,10 +236,11 @@ void OdriveSendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN, uint8_
 
     // 动态分配CAN报文内存（8字节对齐）
     txMessage = (CanTxMsg*)aqCalloc(8,sizeof(CanTxMsg));
+	(void)ID_CAN; // ODrive node ID is bound to OD_CANID.
 
     // 设置CAN报文头信息
     //CAN ID 的前六位是轴ID（在odrive端设置为0x001），后五位是控制命令（比如 MSG_GET_ENCODER_ERROR）
-	txMessage->StdId = (ID_CAN<<5)+CMD_CAN;
+	txMessage->StdId = OD_CAN_MakeStdId(OD_CANID, CMD_CAN);
     txMessage->IDE = CAN_Id_Standard; // 使用标准帧格式（非扩展帧）
     txMessage->RTR = CAN_RTR_Data;  // 设置为数据帧（非远程帧）
     txMessage->DLC = len;           // 设置数据长度（0-8）
@@ -651,9 +652,8 @@ void CAN1_RX0_IRQHandler(void){
 		rxbuf3=can1_rx_msg.StdId;
 
 		/*********以下是自定义部分**********/
-		switch(can1_rx_msg.StdId >> 5){
-		    case AXIS0_ID:
-				switch(can1_rx_msg.StdId & 0x1F){
+		if (OD_CAN_GetNodeId(can1_rx_msg.StdId) == (OD_CANID & OD_CAN_NODE_ID_MASK)) {
+			switch(OD_CAN_GetCmdId(can1_rx_msg.StdId)){
 				    case MSG_CO_NMT_CTRL:
 						// 处理 NMT 控制消息
 						break;
@@ -692,7 +692,7 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_SET_AXIS_NODE_ID:
 
-						OD_CANID = can1_rx_msg.Data[0];
+						OD_CANID = can1_rx_msg.Data[0] & OD_CAN_NODE_ID_MASK;
 						break;
 
 					case MSG_SET_AXIS_REQUESTED_STATE:

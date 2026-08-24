@@ -23,6 +23,25 @@ enum{
 };
 extern uint8_t OD_CANID; //CAN的ID
 extern uint8_t OD_CAN_BaudRate; //CAN的波特率
+
+#define OD_CAN_CMD_MASK      0x1FU
+#define OD_CAN_NODE_ID_MASK  0x3FU
+
+static inline uint32_t OD_CAN_MakeStdId(uint32_t node_id, uint32_t cmd_id)
+{
+	return ((node_id & OD_CAN_NODE_ID_MASK) << 5) | (cmd_id & OD_CAN_CMD_MASK);
+}
+
+static inline uint8_t OD_CAN_GetNodeId(uint32_t std_id)
+{
+	return (uint8_t)((std_id >> 5) & OD_CAN_NODE_ID_MASK);
+}
+
+static inline uint32_t OD_CAN_GetCmdId(uint32_t std_id)
+{
+	return std_id & OD_CAN_CMD_MASK;
+}
+
 /*CAN发送结构体*/
 typedef struct {
 	uint8_t cmd;
