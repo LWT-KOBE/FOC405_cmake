@@ -4,6 +4,8 @@
     <file url="file://$PROJECT_DIR$/Communication/communication_can.c" charset="GB2312" />
     <file url="file://$PROJECT_DIR$/Communication/communication_usb.c" charset="GB2312" />
     <file url="file://$PROJECT_DIR$/Hardware/can.c" charset="GB2312" />
+    <file url="file://$PROJECT_DIR$/MotorControl/foc.h" charset="GBK" />
     <file url="file://$PROJECT_DIR$/Sys/sys/sys.c" charset="GB2312" />
+    <file url="PROJECT" charset="GBK" />
   </component>
 </project>
