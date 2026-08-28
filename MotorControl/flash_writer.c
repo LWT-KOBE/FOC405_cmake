@@ -96,7 +96,7 @@ static void apply_compiled_encoder_config_guard(void)
 void flash_para_read(void)
 {
 	uint32_t i;
-
+	// OD_CANID = flash_reg[0];  //CAN的ID
 	for(i=0; i<NUMBER_PARA_ ;i++)
 	{
 		flash_reg[i] = *(uint32_t*)(Flash_Addr+ i*4);
@@ -106,9 +106,9 @@ void flash_para_read(void)
 	{
 
 		// 基础设置
-		OD_CANID = flash_reg[0];  //CAN的ID
-		OD_CAN_BaudRate = flash_reg[1];  //CAN的波特率
-		usart2_baudrate = flash_reg[2];  //usart2波特率
+		// OD_CANID = flash_reg[0];  //CAN的ID
+		// OD_CAN_BaudRate = flash_reg[1];  //CAN的波特率
+		// usart2_baudrate = flash_reg[2];  //usart2波特率
 		// 控制器设置
 		ctrl_config.control_mode = flash_reg[3];         //控制模式
 		ctrl_config.input_mode = flash_reg[4];             //输入模式
@@ -319,9 +319,9 @@ void flash_para_write(void)
 	__DSB();
 
 #if 1
-	flash_reg[0] = OD_CANID;
-	flash_reg[1] = OD_CAN_BaudRate;
-	flash_reg[2] = usart2_baudrate;
+	// flash_reg[0] = OD_CANID;
+	// flash_reg[1] = OD_CAN_BaudRate;
+	// flash_reg[2] = usart2_baudrate;
 	flash_reg[3] = ctrl_config.control_mode;
 	flash_reg[4] = ctrl_config.input_mode;
 	flash_reg[5] = float2uint(ctrl_config.torque_ramp_rate);
