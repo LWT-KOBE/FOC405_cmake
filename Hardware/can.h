@@ -48,6 +48,23 @@ typedef struct {
 	uint8_t data[8];
 }CANSendStruct_t;
 
+typedef struct {
+	volatile uint32_t enqueued;
+	volatile uint32_t mailbox_loaded;
+	volatile uint32_t mailbox_completed;
+	volatile uint32_t transmit_ok;
+	volatile uint32_t arbitration_lost;
+	volatile uint32_t transmit_error;
+	volatile uint32_t no_mailbox;
+	volatile uint32_t queue_full;
+	volatile uint32_t invalid_argument;
+	volatile uint32_t pending;
+	volatile uint32_t peak_pending;
+	volatile uint32_t active_mailboxes;
+} CAN1TxQueueStats_t;
+
+extern CAN1TxQueueStats_t CAN1_TxQueueStats;
+
 //CAN的电机控制命令
 typedef  enum {
         MSG_CO_NMT_CTRL = 0x000,             		 // CANOpen NMT Message REC

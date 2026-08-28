@@ -7,6 +7,137 @@ int32_t En_d40_raw = 0;
 uint8_t OD_CANID = 1; //CAN的ID
 uint8_t OD_CAN_BaudRate; //波特率
 
+#define CAN1_TX_QUEUE_CAPACITY 32U
+
+static CanTxMsg CAN1_TxQueue[CAN1_TX_QUEUE_CAPACITY];
+static volatile uint8_t CAN1_TxQueueHead = 0U;
+static volatile uint8_t CAN1_TxQueueTail = 0U;
+static volatile uint8_t CAN1_TxQueueCount = 0U;
+static volatile uint8_t CAN1_TxActiveMailboxes = 0U;
+static volatile uint8_t CAN1_TxOwnedMailboxMask = 0U;
+CAN1TxQueueStats_t CAN1_TxQueueStats = {0};
+
+static void CAN1_TxQueuePump(void);
+
+static uint32_t CAN1_EnterCritical(void)
+{
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+	return primask;
+}
+
+static void CAN1_ExitCritical(uint32_t primask)
+{
+	if (primask == 0U) {
+		__enable_irq();
+	}
+}
+
+static void CAN1_TxQueueReset(void)
+{
+	uint32_t primask = CAN1_EnterCritical();
+
+	CAN1_TxQueueHead = 0U;
+	CAN1_TxQueueTail = 0U;
+	CAN1_TxQueueCount = 0U;
+	CAN1_TxActiveMailboxes = 0U;
+	CAN1_TxOwnedMailboxMask = 0U;
+	CAN1_TxQueueStats.enqueued = 0U;
+	CAN1_TxQueueStats.mailbox_loaded = 0U;
+	CAN1_TxQueueStats.mailbox_completed = 0U;
+	CAN1_TxQueueStats.transmit_ok = 0U;
+	CAN1_TxQueueStats.arbitration_lost = 0U;
+	CAN1_TxQueueStats.transmit_error = 0U;
+	CAN1_TxQueueStats.no_mailbox = 0U;
+	CAN1_TxQueueStats.queue_full = 0U;
+	CAN1_TxQueueStats.invalid_argument = 0U;
+	CAN1_TxQueueStats.pending = 0U;
+	CAN1_TxQueueStats.peak_pending = 0U;
+	CAN1_TxQueueStats.active_mailboxes = 0U;
+	CAN_ITConfig(CAN1, CAN_IT_TME, DISABLE);
+
+	CAN1_ExitCritical(primask);
+}
+
+static void CAN1_TxQueuePump(void)
+{
+	while (CAN1_TxQueueCount > 0U) {
+		uint8_t mailbox = CAN_Transmit(CAN1, &CAN1_TxQueue[CAN1_TxQueueTail]);
+
+		if (mailbox == CAN_TxStatus_NoMailBox) {
+			CAN1_TxQueueStats.no_mailbox++;
+			CAN_ITConfig(CAN1, CAN_IT_TME, ENABLE);
+			return;
+		}
+
+		CAN1_TxQueueTail = (uint8_t)((CAN1_TxQueueTail + 1U) % CAN1_TX_QUEUE_CAPACITY);
+		CAN1_TxQueueCount--;
+		CAN1_TxOwnedMailboxMask |= (uint8_t)(1U << mailbox);
+		CAN1_TxActiveMailboxes++;
+		CAN1_TxQueueStats.mailbox_loaded++;
+		CAN1_TxQueueStats.pending = CAN1_TxQueueCount;
+		CAN1_TxQueueStats.active_mailboxes = CAN1_TxActiveMailboxes;
+	}
+
+	CAN_ITConfig(CAN1, CAN_IT_TME,
+			CAN1_TxActiveMailboxes > 0U ? ENABLE : DISABLE);
+}
+
+static uint8_t CAN1_TxQueuePush(const CanTxMsg *message)
+{
+	uint32_t primask;
+
+	if (message == NULL) {
+		CAN1_TxQueueStats.invalid_argument++;
+		return 0U;
+	}
+
+	primask = CAN1_EnterCritical();
+	if (CAN1_TxQueueCount >= CAN1_TX_QUEUE_CAPACITY) {
+		CAN1_TxQueueStats.queue_full++;
+		CAN1_ExitCritical(primask);
+		return 0U;
+	}
+
+	CAN1_TxQueue[CAN1_TxQueueHead] = *message;
+	CAN1_TxQueueHead = (uint8_t)((CAN1_TxQueueHead + 1U) % CAN1_TX_QUEUE_CAPACITY);
+	CAN1_TxQueueCount++;
+	CAN1_TxQueueStats.enqueued++;
+	CAN1_TxQueueStats.pending = CAN1_TxQueueCount;
+	if (CAN1_TxQueueStats.pending > CAN1_TxQueueStats.peak_pending) {
+		CAN1_TxQueueStats.peak_pending = CAN1_TxQueueStats.pending;
+	}
+
+	CAN1_TxQueuePump();
+	CAN1_ExitCritical(primask);
+	return 1U;
+}
+
+static void CAN1_RecordTxCompletion(uint32_t tsr, uint8_t mailbox_mask,
+		uint32_t rqcp, uint32_t txok,
+		uint32_t arbitration_lost, uint32_t transmit_error)
+{
+	if ((tsr & rqcp) == 0U || (CAN1_TxOwnedMailboxMask & mailbox_mask) == 0U) {
+		return;
+	}
+
+	CAN1_TxOwnedMailboxMask &= (uint8_t)~mailbox_mask;
+	CAN1_TxQueueStats.mailbox_completed++;
+	if (CAN1_TxActiveMailboxes > 0U) {
+		CAN1_TxActiveMailboxes--;
+	}
+	CAN1_TxQueueStats.active_mailboxes = CAN1_TxActiveMailboxes;
+	if ((tsr & txok) != 0U) {
+		CAN1_TxQueueStats.transmit_ok++;
+	}
+	if ((tsr & arbitration_lost) != 0U) {
+		CAN1_TxQueueStats.arbitration_lost++;
+	}
+	if ((tsr & transmit_error) != 0U) {
+		CAN1_TxQueueStats.transmit_error++;
+	}
+}
+
 static inline uint8_t can_is_query_request(const CanRxMsg *msg)
 {
     return (msg->IDE == CAN_Id_Standard) && (msg->RTR == CAN_RTR_Remote);
@@ -39,7 +170,7 @@ void CAN1_Init(void)
     CAN_InitStructure.CAN_TTCM = DISABLE;                    // 禁用时间触发通信模式
     CAN_InitStructure.CAN_ABOM = DISABLE;                    // 禁用自动离线管理
     CAN_InitStructure.CAN_AWUM = DISABLE;                    // 禁用自动唤醒
-    CAN_InitStructure.CAN_NART = ENABLE;                     // 禁用自动重传
+    CAN_InitStructure.CAN_NART = DISABLE;                    // 关闭单次发送模式，开启硬件自动重发
     CAN_InitStructure.CAN_RFLM = DISABLE;                    // 禁用接收FIFO锁定模式
     CAN_InitStructure.CAN_TXFP = DISABLE;                    // 禁用发送FIFO优先级
     CAN_InitStructure.CAN_Mode = CAN_Mode_Normal;            // 设置为正常模式
@@ -49,6 +180,7 @@ void CAN1_Init(void)
     CAN_InitStructure.CAN_BS2 = CAN_BS2_4tq;                 // 时间段2为4
     CAN_InitStructure.CAN_Prescaler = 3;                     // 预分频为3
     CAN_Init(CAN1, &CAN_InitStructure);                      // 初始化CAN1
+    CAN1_TxQueueReset();
 
     // 4. CAN滤波器配置（接收所有报文）
     CAN_FilterInitStructure.CAN_FilterNumber = 0;            // 滤波器编号0
@@ -71,6 +203,12 @@ void CAN1_Init(void)
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;// 次优先级为0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
+	NVIC_Init(&NVIC_InitStructure);
+
+	NVIC_InitStructure.NVIC_IRQChannel = CAN1_TX_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
 }
@@ -121,7 +259,7 @@ void CAN1_Mode_Init(uint8_t tsjw,uint8_t tbs2,uint8_t tbs1,uint16_t brp,uint8_t 
 	CAN_InitStructure.CAN_TTCM=DISABLE;		//非时间触发通信模式
 	CAN_InitStructure.CAN_ABOM=ENABLE;		//软件自动离线管理
 	CAN_InitStructure.CAN_AWUM=ENABLE;		//睡眠模式通过软件唤醒(清除CAN->MCR的SLEEP位)
-	CAN_InitStructure.CAN_NART=ENABLE;		//禁用自动重传
+	CAN_InitStructure.CAN_NART=DISABLE;		//关闭单次发送模式，开启硬件自动重发
 	CAN_InitStructure.CAN_RFLM=DISABLE;		//报文不锁定,新的覆盖旧的
 	CAN_InitStructure.CAN_TXFP=DISABLE;		//优先级由报文标识符决定
 
@@ -132,6 +270,7 @@ void CAN1_Mode_Init(uint8_t tsjw,uint8_t tbs2,uint8_t tbs1,uint16_t brp,uint8_t 
 	CAN_InitStructure.CAN_Prescaler=brp;  //分频系数(Fdiv)为brp+1
 
 	CAN_Init(CAN1, &CAN_InitStructure);// 初始化CAN1
+	CAN1_TxQueueReset();
 
 	//配置过滤器
 	CAN_SlaveStartBank(0);
@@ -156,6 +295,12 @@ void CAN1_Mode_Init(uint8_t tsjw,uint8_t tbs2,uint8_t tbs1,uint16_t brp,uint8_t 
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;// 次优先级为0
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 
+	NVIC_Init(&NVIC_InitStructure);
+
+	NVIC_InitStructure.NVIC_IRQChannel = CAN1_TX_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
 }
@@ -190,10 +335,12 @@ void CAN1_Set_BaudRate(uint8_t baudRate){
 void CAN1_SendData(CAN_TypeDef *CANx, uint32_t ID_CAN,uint8_t len, CANSendStruct_t* CanSendData)
 {
     CanTxMsg txMessage = {0};
-    uint8_t mbox;           // 用于存储发送邮箱号（0-2）
     uint8_t count;          // 数据拷贝循环计数器
-    uint16_t i = 0;         // 发送状态检查超时计数器
 
+	if (CANx != CAN1 || CanSendData == NULL || len > 8U) {
+		CAN1_TxQueueStats.invalid_argument++;
+		return;
+	}
 
     // 设置CAN报文头信息
     txMessage.StdId = ID_CAN;      // 设置标准标识符
@@ -206,15 +353,7 @@ void CAN1_SendData(CAN_TypeDef *CANx, uint32_t ID_CAN,uint8_t len, CANSendStruct
         txMessage.Data[count] = (uint8_t)CanSendData->data[count]; // 逐字节拷贝数据
     }
 
-    // 启动CAN发送并获取使用的邮箱号
-    mbox = CAN_Transmit(CANx, &txMessage);
-
-    // 等待发送完成（带超时保护）
-    while (CAN_TransmitStatus(CANx,mbox) == 0x00) { // 0x00表示发送未完成
-        i++;
-        if (i >= 0xFFF) break; // 超过4095次等待则超时退出
-    }
-
+	(void)CAN1_TxQueuePush(&txMessage);
 }
 
 
@@ -226,9 +365,12 @@ void CAN1_SendData(CAN_TypeDef *CANx, uint32_t ID_CAN,uint8_t len, CANSendStruct
 void OdriveSendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN, uint8_t len, CANSendStruct_t* CanSendData)
 {
     CanTxMsg txMessage = {0};
-    uint8_t mbox;           // 用于存储发送邮箱号（0-2）
     uint8_t count;          // 数据拷贝循环计数器
-    uint16_t i = 0;         // 发送状态检查超时计数器
+
+	if (CANx != CAN1 || CanSendData == NULL || len > 8U) {
+		CAN1_TxQueueStats.invalid_argument++;
+		return;
+	}
 
 	(void)ID_CAN; // ODrive node ID is bound to OD_CANID.
 
@@ -244,15 +386,7 @@ void OdriveSendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN, uint8_
         txMessage.Data[count] = (uint8_t)CanSendData->data[count]; // 逐字节拷贝数据
     }
 
-    // 启动CAN发送并获取使用的邮箱号
-    mbox = CAN_Transmit(CANx, &txMessage);
-
-    // 等待发送完成（带超时保护）
-    // while (CAN_TransmitStatus(CANx,mbox) == 0x00) { // 0x00表示发送未完成
-    //     i++;
-    //     if (i >= 0xFFF) break; // 超过4095次等待则超时退出
-    // }
-
+	(void)CAN1_TxQueuePush(&txMessage);
 }
 
 
@@ -626,6 +760,24 @@ static void set_mit_control_cmd(CanRxMsg* CanRevData)
 CanRxMsg can1_rx_msg;
 u32 rxbuf3;
 u8 flag_iap;
+
+void CAN1_TX_IRQHandler(void)
+{
+	uint32_t tsr = CAN1->TSR;
+	uint32_t primask = CAN1_EnterCritical();
+
+	CAN1_RecordTxCompletion(tsr, (uint8_t)(1U << 0), CAN_TSR_RQCP0, CAN_TSR_TXOK0,
+			CAN_TSR_ALST0, CAN_TSR_TERR0);
+	CAN1_RecordTxCompletion(tsr, (uint8_t)(1U << 1), CAN_TSR_RQCP1, CAN_TSR_TXOK1,
+			CAN_TSR_ALST1, CAN_TSR_TERR1);
+	CAN1_RecordTxCompletion(tsr, (uint8_t)(1U << 2), CAN_TSR_RQCP2, CAN_TSR_TXOK2,
+			CAN_TSR_ALST2, CAN_TSR_TERR2);
+
+	CAN_ClearITPendingBit(CAN1, CAN_IT_TME);
+	CAN1_TxQueuePump();
+	CAN1_ExitCritical(primask);
+}
+
 void CAN1_RX0_IRQHandler(void){
 	//CanRxMsg can1_rx_msg;
 	if (CAN_GetITStatus(CAN1,CAN_IT_FMP0)!= RESET){
