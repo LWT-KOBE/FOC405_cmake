@@ -189,27 +189,25 @@ void CAN1_Set_BaudRate(uint8_t baudRate){
 //       CanSendData - 包含发送数据的结构体指针
 void CAN1_SendData(CAN_TypeDef *CANx, uint32_t ID_CAN,uint8_t len, CANSendStruct_t* CanSendData)
 {
-    CanTxMsg *txMessage;	// 定义CAN发送报文结构体指针
+    CanTxMsg txMessage = {0};
     uint8_t mbox;           // 用于存储发送邮箱号（0-2）
     uint8_t count;          // 数据拷贝循环计数器
     uint16_t i = 0;         // 发送状态检查超时计数器
 
-    // 动态分配CAN报文内存（8字节对齐）
-    txMessage = (CanTxMsg*)aqCalloc(8,sizeof(CanTxMsg));
 
     // 设置CAN报文头信息
-    txMessage->StdId = ID_CAN;      // 设置标准标识符
-    txMessage->IDE = CAN_Id_Standard; // 使用标准帧格式（非扩展帧）
-    txMessage->RTR = CAN_RTR_Data;  // 设置为数据帧（非远程帧）
-    txMessage->DLC = len;           // 设置数据长度（0-8）
+    txMessage.StdId = ID_CAN;      // 设置标准标识符
+    txMessage.IDE = CAN_Id_Standard; // 使用标准帧格式（非扩展帧）
+    txMessage.RTR = CAN_RTR_Data;  // 设置为数据帧（非远程帧）
+    txMessage.DLC = len;           // 设置数据长度（0-8）
 
     // 拷贝用户数据到CAN报文
     for (count = 0; count < len; count++) {
-        txMessage->Data[count] = (uint8_t)CanSendData->data[count]; // 逐字节拷贝数据
+        txMessage.Data[count] = (uint8_t)CanSendData->data[count]; // 逐字节拷贝数据
     }
 
     // 启动CAN发送并获取使用的邮箱号
-    mbox = CAN_Transmit(CANx, txMessage);
+    mbox = CAN_Transmit(CANx, &txMessage);
 
     // 等待发送完成（带超时保护）
     while (CAN_TransmitStatus(CANx,mbox) == 0x00) { // 0x00表示发送未完成
@@ -217,8 +215,6 @@ void CAN1_SendData(CAN_TypeDef *CANx, uint32_t ID_CAN,uint8_t len, CANSendStruct
         if (i >= 0xFFF) break; // 超过4095次等待则超时退出
     }
 
-    // 释放动态分配的内存
-    aqFree(txMessage,8,sizeof(CanTxMsg));
 }
 
 
@@ -229,29 +225,27 @@ void CAN1_SendData(CAN_TypeDef *CANx, uint32_t ID_CAN,uint8_t len, CANSendStruct
 //       CanSendData - 包含发送数据的结构体指针
 void OdriveSendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN, uint8_t len, CANSendStruct_t* CanSendData)
 {
-    CanTxMsg *txMessage;	// 定义CAN发送报文结构体指针
+    CanTxMsg txMessage = {0};
     uint8_t mbox;           // 用于存储发送邮箱号（0-2）
     uint8_t count;          // 数据拷贝循环计数器
     uint16_t i = 0;         // 发送状态检查超时计数器
 
-    // 动态分配CAN报文内存（8字节对齐）
-    txMessage = (CanTxMsg*)aqCalloc(8,sizeof(CanTxMsg));
 	(void)ID_CAN; // ODrive node ID is bound to OD_CANID.
 
     // 设置CAN报文头信息
     //CAN ID 的前六位是轴ID（在odrive端设置为0x001），后五位是控制命令（比如 MSG_GET_ENCODER_ERROR）
-	txMessage->StdId = OD_CAN_MakeStdId(OD_CANID, CMD_CAN);
-    txMessage->IDE = CAN_Id_Standard; // 使用标准帧格式（非扩展帧）
-    txMessage->RTR = CAN_RTR_Data;  // 设置为数据帧（非远程帧）
-    txMessage->DLC = len;           // 设置数据长度（0-8）
+	txMessage.StdId = OD_CAN_MakeStdId(OD_CANID, CMD_CAN);
+    txMessage.IDE = CAN_Id_Standard; // 使用标准帧格式（非扩展帧）
+    txMessage.RTR = CAN_RTR_Data;  // 设置为数据帧（非远程帧）
+    txMessage.DLC = len;           // 设置数据长度（0-8）
 
     // 拷贝用户数据到CAN报文
     for (count = 0; count < len; count++) {
-        txMessage->Data[count] = (uint8_t)CanSendData->data[count]; // 逐字节拷贝数据
+        txMessage.Data[count] = (uint8_t)CanSendData->data[count]; // 逐字节拷贝数据
     }
 
     // 启动CAN发送并获取使用的邮箱号
-    mbox = CAN_Transmit(CANx, txMessage);
+    mbox = CAN_Transmit(CANx, &txMessage);
 
     // 等待发送完成（带超时保护）
     // while (CAN_TransmitStatus(CANx,mbox) == 0x00) { // 0x00表示发送未完成
@@ -259,8 +253,6 @@ void OdriveSendData(CAN_TypeDef *CANx, uint32_t ID_CAN, uint32_t CMD_CAN, uint8_
     //     if (i >= 0xFFF) break; // 超过4095次等待则超时退出
     // }
 
-    // 释放动态分配的内存
-    aqFree(txMessage,8,sizeof(CanTxMsg));
 }
 
 
