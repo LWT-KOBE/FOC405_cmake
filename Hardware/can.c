@@ -4,7 +4,7 @@ CANSendStruct_t ODSendData;
 float En_d40_angle = 0;
 int32_t En_d40_raw = 0;
 
-uint8_t OD_CANID = 1; //CAN的ID
+uint8_t OD_CANID = 0; //CAN的ID
 uint8_t OD_CAN_BaudRate; //波特率
 
 static inline uint8_t can_is_query_request(const CanRxMsg *msg)
