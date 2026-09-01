@@ -56,7 +56,7 @@ int main(void)
 	#if (ENCODER_mode != MODE_HALL)
 	// KTH7111_TIM7_PLL_Init();
 	#endif
-	// TIM7_Init();
+	TIM7_Init();
 
 	CAN1_Set_BaudRate(OD_CAN_BaudRate); //CAN波特率设置
 	// CAN1_Set_BaudRate(2); //CAN波特率设置
@@ -64,6 +64,7 @@ int main(void)
 	motor_para_init();
 	motor_setup();
 	MagneticSensor_Init();
+	SecondEncoder_Init();
 	controller_config_default();//电机控制参数上电默认值
 	trapTraj_config_default();  //梯形轨迹参数上电默认值
 	sCurveTraj_config_default(); //S型轨迹参数上电默认值

@@ -37,6 +37,7 @@
 #include "flash_writer.h"
 #include "anticogging.h"
 #include "ntc.h"
+#include "secondary_encoder.h"
 //
 // // 系统调度与调试相关头文件
 #include "vofa.h"
@@ -132,9 +133,16 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 // #define  ENCODER_cpr                     84      //HALL = pole_pairs * 6
 // #define  ENCODER_bandwidth              100      //默认1000，hall电机的cpr比较小，可设置为100
 
-#define  ENCODER_mode        MODE_SPI_MLX90520    //编码器类型，共6种:MODE_INCREMENTAL,MODE_SPI_AS5047P,MODE_SPI_MT6701,MODE_SPI_MA730,MODE_SPI_TLE5012B,MODE_SPI_MT6835
-#define  ENCODER_cpr                  65535      //AS5047P=MT6701=MA730=16384,TLE5012B=32768,KTH7112=65536,MT6835=2097152,MODE_INCREMENTAL=4000,
-#define  ENCODER_bandwidth             1000      //默认1000，hall电机的cpr比较小，可设置为100
+#define  ENCODER_mode        MODE_HALL          //主FOC编码器：霍尔
+#define  ENCODER_cpr                     84      //HALL = pole_pairs * 6
+#define  ENCODER_bandwidth              100      //霍尔模式带宽
+
+#define  SECOND_ENCODER_ENABLE       1
+#define  SECOND_ENCODER_mode         MODE_SPI_MLX90520  //第二编码器：仅采样，不参与FOC
+#define  SECOND_MLX90520_SENSOR_VDP  16u
+#define  SECOND_MLX90520_PERIODS_PER_REV 1u
+#define  SECOND_MLX90520_SENSOR_CPR  ((uint32_t)SECOND_MLX90520_SENSOR_VDP * 65536u)
+#define  SECOND_MLX90520_CPR         (SECOND_MLX90520_SENSOR_CPR * SECOND_MLX90520_PERIODS_PER_REV)
 
 //控制模式，以下参数请熟练官方ODrive操作后再设置，参数的意义和大小与odrivetool中的设置一致
 #define  CONTROL_mode        CONTROL_MODE_VELOCITY_CONTROL  //控制模式:CONTROL_MODE_VOLTAGE_CONTROL,CONTROL_MODE_TORQUE_CONTROL,CONTROL_MODE_VELOCITY_CONTROL,CONTROL_MODE_POSITION_CONTROL

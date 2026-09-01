@@ -282,6 +282,7 @@ static void TIM7_InitNtcParamsOnce(void)
 void TIM7_LowPriorityService(void)
 {
 	TIM7_InitNtcParamsOnce();
+	SecondEncoder_Update();
 
 	if (tim7_temperature_pending) {
 		tim7_temperature_pending = 0u;
@@ -319,7 +320,10 @@ void TIM7_LowPriorityService(void)
 		vofaFrame.fdata[13] = temperature_motor;
 		vofaFrame.fdata[14] = Id_measured;
 		vofaFrame.fdata[15] = Idq_setpoint_src_->d;
-		vofaFrame.fdata[16] = pos_val;
+		vofaFrame.fdata[16] = second_encoder.position_turns;
+		vofaFrame.fdata[17] = (float)second_encoder.raw;
+		vofaFrame.fdata[18] = (float)second_encoder.count_in_cpr;
+		vofaFrame.fdata[19] = (float)second_encoder.ready;
 		vofa_printf_USB();
 	}
 }
