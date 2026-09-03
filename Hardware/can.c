@@ -4,8 +4,8 @@ CANSendStruct_t ODSendData;
 float En_d40_angle = 0;
 int32_t En_d40_raw = 0;
 
-uint8_t OD_CANID = 1; //CAN的ID
-uint8_t OD_CAN_BaudRate; //波特率
+uint32_t OD_CANID = 1; //CAN的ID
+uint32_t OD_CAN_BaudRate; //波特率
 
 #define CAN1_TX_QUEUE_CAPACITY 32U
 
