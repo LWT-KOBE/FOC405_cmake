@@ -21,8 +21,8 @@ enum{
     CAN_250K=2,
     CAN_125K=3
 };
-extern uint8_t OD_CANID; //CAN的ID
-extern uint8_t OD_CAN_BaudRate; //CAN的波特率
+extern uint32_t OD_CANID; //CAN的ID
+extern uint32_t OD_CAN_BaudRate; //CAN的波特率
 
 #define OD_CAN_CMD_MASK      0x1FU
 #define OD_CAN_NODE_ID_MASK  0x3FU
