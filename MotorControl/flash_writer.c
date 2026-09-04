@@ -37,7 +37,7 @@ STM32F405RGT6, 1M flash, 中文数据手册P.59
 
 #define FLASH_Sector_11    ((uint16_t)0x0058)
 #define Flash_Addr         0x080E0000     //保存参数的flash起始地址, 地址必须4字节对齐
-#define NUMBER_PARA_        34
+#define NUMBER_PARA_        40
 #define Flash_AntiCogging_Addr    0x080F0000     //保存抗齿槽校准参数的flash起始地址
 /*****************************************************************************/
 uint32_t flash_reg[128];
@@ -106,9 +106,9 @@ void flash_para_read(void)
 	{
 
 		// 基础设置
-		// OD_CANID = flash_reg[0];  //CAN的ID
-		// OD_CAN_BaudRate = flash_reg[1];  //CAN的波特率
-		// usart2_baudrate = flash_reg[2];  //usart2波特率
+		OD_CANID = flash_reg[0];  //CAN的ID
+		OD_CAN_BaudRate = flash_reg[1];  //CAN的波特率
+		usart2_baudrate = flash_reg[2];  //usart2波特率
 		// 控制器设置
 		ctrl_config.control_mode = flash_reg[3];         //控制模式
 		ctrl_config.input_mode = flash_reg[4];             //输入模式
@@ -150,6 +150,7 @@ void flash_para_read(void)
 		// encoder_config.pre_calibrated = flash_reg[32];                //是否已经校准
 		axis_config.startup_closed_loop_control = flash_reg[32];      //是否上电后进入闭环
 		anticogging_valid_ = flash_reg[33];                           //抗齿槽校准数据是否正常标志位
+
 
 		update_current_controller_gains();
 		is_calibrated_ = 1;
@@ -319,9 +320,9 @@ void flash_para_write(void)
 	__DSB();
 
 #if 1
-	// flash_reg[0] = OD_CANID;
-	// flash_reg[1] = OD_CAN_BaudRate;
-	// flash_reg[2] = usart2_baudrate;
+	flash_reg[0] = OD_CANID;
+	flash_reg[1] = OD_CAN_BaudRate;
+	flash_reg[2] = usart2_baudrate;
 	flash_reg[3] = ctrl_config.control_mode;
 	flash_reg[4] = ctrl_config.input_mode;
 	flash_reg[5] = float2uint(ctrl_config.torque_ramp_rate);

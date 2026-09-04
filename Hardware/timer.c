@@ -332,31 +332,31 @@ void TIM7_IRQHandler(void)
 		//IAP_Send_Device_ino();
 		
 		
-		if(time_cnt > 1){
-			time_cnt = 0;
-//			// 进入闭环控制状态才发送
-			if(current_state_ == AXIS_STATE_CLOSED_LOOP_CONTROL){
-				// vofaFrame.fdata[0] = vel_estimate_;
-				// vofaFrame.fdata[1] = input_vel_;
-				//
-				// vofaFrame.fdata[2] = pos_estimate_;
-				// vofaFrame.fdata[3] = input_pos_;
-				// vofaFrame.fdata[4] = encoder_config.pre_calibrated;
-				// vofaFrame.fdata[5] = current_meas_.phA;
-				// vofaFrame.fdata[6] = current_meas_.phB;
-				// vofaFrame.fdata[7] = current_meas_.phC;
-				// vofaFrame.fdata[8] = Ibus;
-				// vofaFrame.fdata[9] = vbus_voltage;
-				// vofaFrame.fdata[10] = Iq_measured;
-				// vofaFrame.fdata[11] = Idq_setpoint_.q;
-				// vofaFrame.fdata[12] = temperature_board; // 板载MOS管温度值
-				// vofaFrame.fdata[13] = temperature_motor; // 电机NTC温度值
-				// vofaFrame.fdata[14] = Id_measured; //
-				// vofaFrame.fdata[15] = Idq_setpoint_src_->d;
-				// vofaFrame.fdata[16] = pos_val;
-				// vofa_printf_USB();
-			}
-		}
+// 		if(time_cnt > 1){
+// 			time_cnt = 0;
+// //			// 进入闭环控制状态才发送
+// 			if(current_state_ == AXIS_STATE_CLOSED_LOOP_CONTROL){
+// 				vofaFrame.fdata[0] = vel_estimate_;
+// 				vofaFrame.fdata[1] = input_vel_;
+//
+// 				vofaFrame.fdata[2] = pos_estimate_;
+// 				vofaFrame.fdata[3] = input_pos_;
+// 				vofaFrame.fdata[4] = encoder_config.pre_calibrated;
+// 				vofaFrame.fdata[5] = current_meas_.phA;
+// 				vofaFrame.fdata[6] = current_meas_.phB;
+// 				vofaFrame.fdata[7] = current_meas_.phC;
+// 				vofaFrame.fdata[8] = Ibus;
+// 				vofaFrame.fdata[9] = vbus_voltage;
+// 				vofaFrame.fdata[10] = Iq_measured;
+// 				vofaFrame.fdata[11] = Idq_setpoint_.q;
+// 				vofaFrame.fdata[12] = temperature_board; // 板载MOS管温度值
+// 				vofaFrame.fdata[13] = temperature_motor; // 电机NTC温度值
+// 				vofaFrame.fdata[14] = Id_measured; //
+// 				vofaFrame.fdata[15] = Idq_setpoint_src_->d;
+// 				vofaFrame.fdata[16] = pos_val;
+// 				vofa_printf_USB();
+// 			}
+// 		}
 		TIM_ClearITPendingBit(TIM7, TIM_IT_Update);
 		// 在这里添加定时器7的中断处理代码
 	}

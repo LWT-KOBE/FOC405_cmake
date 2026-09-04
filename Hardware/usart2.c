@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "usart2.h"
 
-u8 usart2_baudrate = 3; //usart2波特率
+uint32_t usart2_baudrate = 3; //usart2波特率
 /********************************************************************/
 char snd2_buff[USART2_BUFFER_SIZE];
 char rcv2_buff[USART2_BUFFER_SIZE];

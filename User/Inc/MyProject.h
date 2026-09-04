@@ -117,7 +117,7 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 // #define  MOTOR_calibration_current                 6    //校准电流
 // #define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
 
-#define  MOTOR_calibration_current                 5    //校准电流
+#define  MOTOR_calibration_current                 4    //校准电流
 #define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
 
 // #define  MOTOR_calibration_current                 4    //校准电流

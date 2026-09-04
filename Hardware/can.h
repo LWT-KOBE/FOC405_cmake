@@ -21,8 +21,8 @@ enum{
     CAN_250K=2,
     CAN_125K=3
 };
-extern uint8_t OD_CANID; //CAN的ID
-extern uint8_t OD_CAN_BaudRate; //CAN的波特率
+extern uint32_t OD_CANID; //CAN的ID
+extern uint32_t OD_CAN_BaudRate; //CAN的波特率
 
 #define OD_CAN_CMD_MASK      0x1FU
 #define OD_CAN_NODE_ID_MASK  0x3FU
@@ -47,6 +47,23 @@ typedef struct {
 	uint8_t cmd;
 	uint8_t data[8];
 }CANSendStruct_t;
+
+typedef struct {
+	volatile uint32_t enqueued;
+	volatile uint32_t mailbox_loaded;
+	volatile uint32_t mailbox_completed;
+	volatile uint32_t transmit_ok;
+	volatile uint32_t arbitration_lost;
+	volatile uint32_t transmit_error;
+	volatile uint32_t no_mailbox;
+	volatile uint32_t queue_full;
+	volatile uint32_t invalid_argument;
+	volatile uint32_t pending;
+	volatile uint32_t peak_pending;
+	volatile uint32_t active_mailboxes;
+} CAN1TxQueueStats_t;
+
+extern CAN1TxQueueStats_t CAN1_TxQueueStats;
 
 //CAN的电机控制命令
 typedef  enum {
