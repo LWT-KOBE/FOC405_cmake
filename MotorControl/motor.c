@@ -380,18 +380,21 @@ bool run_calibration(void)
 /****************************************************************************/
 void arm(void)
 {
-	armed_state_ = 1;
-	is_armed_ = 1;
 	controller_reset();
 	foc_reset();
+	enqueue_modulation_timings(0.0f, 0.0f); //使能前清除CCR中的旧调制值
+	armed_state_ = 1;
 	TIM_CtrlPWMOutputs(TIM1, ENABLE);   //使能输出
+	is_armed_ = 1; //放在输出使能之后；此间PWM中断只会维持零调制
 }
 /*************************************/
 void disarm(void)
 {
 	is_armed_ = 0;
-	armed_state_ = 0;
 	TIM_CtrlPWMOutputs(TIM1, DISABLE);  //停止输出
+	armed_state_ = 0;
+	foc_reset();
+	enqueue_modulation_timings(0.0f, 0.0f); //为下次使能预置零调制
 }
 /****************************************************************************/
 bool dc_calib_valid;

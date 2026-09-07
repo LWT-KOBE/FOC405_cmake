@@ -807,6 +807,18 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_ODRIVE_HEARTBEAT:
+						if (can_is_query_request(&can1_rx_msg)) {
+							ODSendData.data[0] = (uint8_t)motor_error;
+							ODSendData.data[1] = (uint8_t)(motor_error >> 8);
+							ODSendData.data[2] = (uint8_t)(motor_error >> 16);
+							ODSendData.data[3] = (uint8_t)(motor_error >> 24);
+							ODSendData.data[4] = (uint8_t)current_state_;
+							ODSendData.data[5] = (uint8_t)ctrl_config.control_mode;
+							ODSendData.data[6] = (uint8_t)ctrl_config.input_mode;
+							ODSendData.data[7] = (is_armed_ ? 0x01U : 0U)
+									| (is_calibrated_ ? 0x02U : 0U);
+							OdriveSendData(CAN1,OD_CANID,MSG_ODRIVE_HEARTBEAT,8,&ODSendData);
+						}
 						// 处理设置输入位置消息
 						break;
 
@@ -949,10 +961,16 @@ void CAN1_RX0_IRQHandler(void){
 						break;
 
 					case MSG_GET_POS_GAIN:
+						if (can_is_query_request(&can1_rx_msg)) {
+							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_POS_GAIN,8,ctrl_config.pos_gain,ctrl_config.vel_limit,&ODSendData);
+						}
 
 						break;
 
 					case MSG_GET_VEL_GAINS:
+						if (can_is_query_request(&can1_rx_msg)) {
+							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_VEL_GAINS,8,ctrl_config.vel_gain,ctrl_config.vel_integrator_gain,&ODSendData);
+						}
 
 						break;
 
