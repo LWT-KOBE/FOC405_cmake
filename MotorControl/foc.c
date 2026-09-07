@@ -181,6 +181,15 @@ void foc_update(void)
 //0.5.6使用了包含函数指针的类，切换不同工作状态，非常不直观。所以移植时更改为标志位判断
 void pwm_update_cb(void)
 {
+	// PWM输出未使能时不要运行电流PI，否则采样零漂会导致积分器持续累积。
+	// 同时将三相比较值保持在50%占空比，避免下次使能时输出旧的调制值。
+	if(!is_armed_)
+	{
+		foc_reset();
+		enqueue_modulation_timings(0.0f, 0.0f);
+		return;
+	}
+
 	if(meas_resis==1)Resistance_get_alpha_beta_output();      //测量电阻时
 	else if(meas_induc==1)Inductance_get_alpha_beta_output(); //测量电感时
 	else   //正常工作时
