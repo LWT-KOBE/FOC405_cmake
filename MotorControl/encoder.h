@@ -81,6 +81,8 @@ uint16_t KTH71_ReadAngle(void);
 uint16_t KTH7111_ReadSSIAngle(void);
 uint8_t KTH7111_ReadSSIAngle_SPI3(uint16_t *pAngle);
 uint16_t KTH7112_ReadAngle(void);
+
+uint16_t KTH7111_ReadAngle(void);
 /****************************************************************************/
 
 #endif

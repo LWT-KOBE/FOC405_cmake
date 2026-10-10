@@ -358,7 +358,93 @@ void SPI1_Init_KTH7111_SSI(void)
 	SPI_Cmd(SPI1, DISABLE);
 }
 
+void SPI1_Init_KTH7112(uint16_t spi_cpol)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    SPI_InitTypeDef  SPI_InitStructure;
 
+    /* GPIOA、GPIOB 时钟 */
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
+                           RCC_AHB1Periph_GPIOB,
+                           ENABLE);
+
+    /* SPI1 位于 APB2 总线 */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+
+    /*
+     * CS：PB6
+     */
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_6;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    /* CS 默认拉高，取消片选 */
+    GPIO_SetBits(GPIOB, GPIO_Pin_6);
+
+    /*
+     * SCK：PA5，复用为 SPI1
+     */
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    GPIO_PinAFConfig(GPIOA,
+                     GPIO_PinSource5,
+                     GPIO_AF_SPI1);
+
+    /*
+     * MOSI/SDIO：PB5，复用为 SPI1
+     * 单线半双工模式下，该引脚同时用于发送和接收。
+     */
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    GPIO_PinAFConfig(GPIOB,
+                     GPIO_PinSource5,
+                     GPIO_AF_SPI1);
+
+    /*
+     * 复位 SPI1
+     */
+    RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI1, ENABLE);
+    RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI1, DISABLE);
+
+    /*
+     * 配置 SPI1
+     */
+    SPI_StructInit(&SPI_InitStructure);
+
+    /* 单线半双工，初始为接收方向 */
+    SPI_InitStructure.SPI_Direction = SPI_Direction_1Line_Rx;
+    SPI_InitStructure.SPI_Mode      = SPI_Mode_Master;
+    SPI_InitStructure.SPI_DataSize  = SPI_DataSize_8b;
+    SPI_InitStructure.SPI_CPOL      = spi_cpol;
+    SPI_InitStructure.SPI_CPHA      = SPI_CPHA_2Edge;
+    SPI_InitStructure.SPI_NSS       = SPI_NSS_Soft;
+
+    /*
+     * SPI1 位于 APB2。
+     * 若 APB2 = 84 MHz，则四分频后的 SPI 时钟为 21 MHz。
+     */
+    SPI_InitStructure.SPI_BaudRatePrescaler =
+        SPI_BaudRatePrescaler_16;
+
+    SPI_InitStructure.SPI_FirstBit      = SPI_FirstBit_MSB;
+    SPI_InitStructure.SPI_CRCPolynomial = 7;
+
+    SPI_Init(SPI1, &SPI_InitStructure);
+    SPI_Cmd(SPI1, ENABLE);
+}
 
 /*****************************************************************************/
 uint16_t SPIx_ReadWriteByte(uint16_t byte)

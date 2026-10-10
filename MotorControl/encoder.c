@@ -189,6 +189,109 @@ uint16_t KTH7111_ReadSSIAngle(void)
 }
 
 
+static void KTH71_SPI1_TransmitReceive(uint8_t *txBuf,
+                                      uint8_t *rxBuf,
+                                      uint8_t txLen,
+                                      uint8_t rxLen)
+{
+    uint8_t i;
+    volatile uint32_t tmp;
+
+    /*
+     * 清除 OVR 标志：
+     * 先读取 DR，再读取 SR。
+     */
+    tmp = SPI1->DR;
+    tmp = SPI1->SR;
+    (void)tmp;
+
+    /* CS 拉低：PB6 */
+    GPIO_ResetBits(GPIOB, GPIO_Pin_6);
+
+    /* ---------- Tx phase ---------- */
+
+    SPI_Cmd(SPI1, DISABLE);
+    SPI_BiDirectionalLineConfig(SPI1, SPI_Direction_Tx);
+    SPI_Cmd(SPI1, ENABLE);
+
+    for (i = 0; i < txLen; i++)
+    {
+        while (SPI_I2S_GetFlagStatus(SPI1,
+                                     SPI_I2S_FLAG_TXE) == RESET)
+        {
+        }
+
+        SPI_I2S_SendData(SPI1, txBuf[i]);
+    }
+
+    /* 等待发送寄存器为空 */
+    while (SPI_I2S_GetFlagStatus(SPI1,
+                                 SPI_I2S_FLAG_TXE) == RESET)
+    {
+    }
+
+    /* 等待 SPI 总线空闲 */
+    while (SPI_I2S_GetFlagStatus(SPI1,
+                                 SPI_I2S_FLAG_BSY) == SET)
+    {
+    }
+
+    /* ---------- Rx phase ---------- */
+
+    if (rxLen > 0U)
+    {
+        /* 切换到接收模式前清除 DR 中的残留数据 */
+        tmp = SPI1->DR;
+        (void)tmp;
+
+        SPI_Cmd(SPI1, DISABLE);
+        SPI_BiDirectionalLineConfig(SPI1, SPI_Direction_Rx);
+        SPI_Cmd(SPI1, ENABLE);
+
+        /* 接收前 rxLen - 1 个字节 */
+        for (i = 0; i < (uint8_t)(rxLen - 1U); i++)
+        {
+            while (SPI_I2S_GetFlagStatus(SPI1,
+                                         SPI_I2S_FLAG_RXNE) == RESET)
+            {
+            }
+
+            rxBuf[i] =
+                (uint8_t)SPI_I2S_ReceiveData(SPI1);
+        }
+
+        /*
+         * 在最后一个字节结束时关闭 SPI，
+         * 避免单线主机接收模式继续产生时钟。
+         */
+        SPI_Cmd(SPI1, DISABLE);
+
+        while (SPI_I2S_GetFlagStatus(SPI1,
+                                     SPI_I2S_FLAG_BSY) == SET)
+        {
+        }
+
+        /* 读取最后一个字节 */
+        rxBuf[rxLen - 1U] =
+            (uint8_t)SPI_I2S_ReceiveData(SPI1);
+    }
+
+    /* CS 拉高：PB6 */
+    GPIO_SetBits(GPIOB, GPIO_Pin_6);
+}
+
+
+uint16_t KTH7111_ReadAngle(void)
+{
+	uint8_t tx = 0x00;
+	uint8_t rx[3];
+	uint16_t angle = 0;
+
+	KTH71_SPI1_TransmitReceive(&tx, rx, 1, 3);
+
+	return  angle = (rx[0] << 8) | rx[1];
+}
+
 
 uint16_t KTH7112_ReadAngle(void)
 {
@@ -894,7 +997,11 @@ bool encoder_update(void)
     pos_estimate_ = pos_estimate_counts_ / (float)encoder_config.cpr;
     // 速度估计（归一化）
     vel_estimate_ = vel_estimate_counts_ / (float)encoder_config.cpr;
-    
+
+#if USE_OUTPUT_SHAFT_GEAR_RATIO
+
+#endif
+
     // 计算循环位置（用于多圈应用）
     // TODO: 应该严格要求这个值来自上一次迭代，以避免失控情况
     float pos_circular = pos_circular_;  // 获取上一次的循环位置

@@ -65,7 +65,10 @@
 #define TIM_APB1_DEADTIME_CLOCKS 40  //50=595ns
 #define TIM_1_8_RCR 2
 
-#define GR 8
+#define USE_OUTPUT_SHAFT_GEAR_RATIO 0
+#define USE_EXTERNAL_ENCODER 1
+
+#define GR 42
 
 
 // Period in [s]

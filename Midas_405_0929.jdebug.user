@@ -1,0 +1,60 @@
+
+
+OpenDocument="startup_stm32f40xx.s", FilePath="F:/Midas/Midas_F405/Startup/startup_stm32f40xx.s", Line=51
+OpenDocument="utils.c", FilePath="F:/Midas/Midas_F405/MotorControl/utils.c", Line=107
+OpenDocument="timer.c", FilePath="F:/Midas/Midas_F405/Hardware/timer.c", Line=235
+OpenDocument="misc.c", FilePath="F:/Midas/Midas_F405/Libraries/Src/misc.c", Line=94
+OpenDocument="main.c", FilePath="F:/Midas/Midas_F405/User/Src/main.c", Line=6
+OpenToolbar="Debug", Floating=0, x=0, y=0
+OpenWindow="Registers 1", DockArea=RIGHT, x=0, y=1, w=300, h=552, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, FilteredItems=[], RefreshRate=1
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=300, h=1008, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Memory 1", DockArea=BOTTOM, x=2, y=0, w=1089, h=396, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x0
+OpenWindow="Watched Data 1", DockArea=LEFT, x=0, y=0, w=723, h=1539, TabPos=0, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=723, h=1539, TabPos=1, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Data Sampling", DockArea=BOTTOM, x=0, y=0, w=1688, h=396, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=1061, h=396, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
+TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Source"], ColWidths=[1614;140;100;124;100]
+TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time"], ColWidths=[100;100]
+TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[172;100;100;100;100;110;130;150;726]
+TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
+TableHeader="Registers 1", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Description"], ColWidths=[107;196;364]
+TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh"], ColWidths=[388;366;145;100]
+TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[26;26;26;26]
+WatchedExpression="current_state_", Window=Watched Data 1
+WatchedExpression="kth7112_angle", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="current_state_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="pos", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="motor_error", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="encoder_config.phase_offset_float", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="encoder_config.phase_offset", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="calib_scan_response_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="expected_encoder_delta", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="input_vel_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="motor_config.phase_inductance", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="flash_flag", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="ctrl_config.vel_limit", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="ctrl_config.vel_gain", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="ctrl_config.vel_integrator_gain", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="ctrl_config.pos_gain", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="motor_config.calibration_current", Window=Watched Data 1
+WatchedExpression="motor_config.resistance_calib_max_voltage", Window=Watched Data 1
+WatchedExpression="pi_gains_[0]", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="pi_gains_[1]", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="ctrl_config.control_mode", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="ctrl_config.input_mode", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="input_torque_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="kth7111_angle", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="angle_k", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="vel_estimate_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="input_pos_updated_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="input_pos_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="first_flag", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="first_flag", Window=Watched Data 1
+WatchedExpression="pos_estimate_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="OD_CANID", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="flash_reg[0]", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="test_voltage_", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="kth7111_angle", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="kth7111_angle_", RefreshRate=5, Window=Watched Data 1

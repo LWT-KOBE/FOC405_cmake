@@ -13,8 +13,8 @@
 // RTT_MSG_U1I1 rtt_JsMsg,rtt_JsMsg2;
 // uint16_t kth7112_angle = 0,kth7111_angle = 2;
 // float angle_k = 0;
-uint16_t kth7112_angle = 0,kth7111_angle = 2;
-float angle_k = 0;
+// uint16_t kth7111_angle = 2;
+float External_pos = 0,kth7111_angle = 2;
 // #define TIM7_INTERRUPT_HZ           1000.0f
 #define TIM7_INTERRUPT_HZ           4000.0f
 
@@ -255,7 +255,7 @@ void KTH7111_TIM7_PLL_Init(void)
 int time_cnt = 0;
 int enc_cnt = 0;
 uint64_t can_cnt = 0;
-uint8_t flash_flag = 0;
+uint8_t flash_flag = 0,kth7111_flag = 0;
 float temperature_motor, temperature_board;
 
 
@@ -308,9 +308,9 @@ void TIM7_IRQHandler(void)
 			flash_flag = 0;
 		}
 
-		KTH7111_PLL_SampleAndUpdate(&kth7111_pll_);
-		kth7111_angle = KTH7111_PLL_GetFiltAngle(&kth7111_pll_);
-		angle_k = KTH7111_PLL_GetAccAngleDeg(&kth7111_pll_) / 2.0f;
+		// KTH7111_PLL_SampleAndUpdate(&kth7111_pll_);
+		// kth7111_angle = KTH7111_PLL_GetFiltAngle(&kth7111_pll_);
+		// angle_k = KTH7111_PLL_GetAccAngleDeg(&kth7111_pll_) / 2.0f;
 
 		// kth7111_angle = KTH7111_ReadSSIAngle();
 		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
@@ -327,6 +327,13 @@ void TIM7_IRQHandler(void)
 		// Motor_CAN_Send_Data(); //发送电机状态数据
 
 		// kth7111_angle = KTH7111_ReadSSIAngle();
+		if (kth7111_flag == 0)
+		{
+			kth7111_angle = KTH7111_ReadAngle();
+			External_pos = kth7111_angle / 65536;
+			kth7111_flag = 1;
+		}
+
 		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
 		// IAP CAN升级
 		//IAP_Send_Device_ino();
