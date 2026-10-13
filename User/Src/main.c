@@ -30,7 +30,7 @@ uint32_t timecount(void)
 	return diff;
 }
 
-
+float External_pos = 0,kth7111_angle = 2;
 // uint16_t kth7112_angle = 0,kth7111_angle = 2;
 // float angle_k = 0;
 /*****************************************************************************/
@@ -44,15 +44,20 @@ int main(void)
 	USART2_Init(115200);        //排针的GPIO3为TXD2，GPIO4为RXD2，GND共地
 	usart2_set_baud(baudrate_115200);  //设置波特率
 	// SPI1_Init_KTH7111_SSI();
+	SPI1_Init_KTH7112(SPI_CPOL_High);
+
+	kth7111_angle = KTH7111_ReadAngle();
+	External_pos = kth7111_angle / 65536;
+	
 	tim14_InitTick();           //1ms中断初始化，为系统提供计时
 	TIM1_PWM_Init();            //M0接口PWM配置，但没有使能
 	ADC_Common_Init();          //初始化ADC的引脚和通用配置，设置中断
 	ADC1_DMA_Init();            //配置注入组，检测vbus，等待TIM1触发
 	ADC2_TRGO_Init();           //配置注入组，检测m0_phB，等待TIM1触发
 	ADC3_TRGO_Init();           //配置注入组，检测m0_phC，等待TIM1触发
-	TIM2_Init();                //触发ADC1的规则转换
-	// KTH7111_TIM7_PLL_Init();
-	SPI1_Init_KTH7112(SPI_CPOL_High);
+	TIM2_Init();                //触发ADC1的规则// KTH7111_TIM7_PLL_Init();
+
+
 	TIM7_Init();
 
 	CAN1_Set_BaudRate(OD_CAN_BaudRate); //CAN波特率设置

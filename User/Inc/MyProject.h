@@ -120,11 +120,11 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 // #define  MOTOR_calibration_current                 6    //校准电流
 // #define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
 
-#define  MOTOR_calibration_current                 4    //校准电流
-#define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
-
 // #define  MOTOR_calibration_current                 4    //校准电流
-// #define  MOTOR_resistance_calib_max_voltage        2    //校准限制电压
+// #define  MOTOR_resistance_calib_max_voltage        3    //校准限制电压
+
+#define  MOTOR_calibration_current                 3    //校准电流
+#define  MOTOR_resistance_calib_max_voltage        8    //校准限制电压
 #define  MOTOR_current_lim                        30    //电机最大运行电流
 
 //MT6701采用三线SPI:接CS、SCLK、MISO；不需要接MOSI引脚。

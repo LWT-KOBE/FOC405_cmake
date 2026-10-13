@@ -14,7 +14,7 @@
 // uint16_t kth7112_angle = 0,kth7111_angle = 2;
 // float angle_k = 0;
 // uint16_t kth7111_angle = 2;
-float External_pos = 0,kth7111_angle = 2;
+// float External_pos = 0,kth7111_angle = 2;
 // #define TIM7_INTERRUPT_HZ           1000.0f
 #define TIM7_INTERRUPT_HZ           4000.0f
 
@@ -327,12 +327,12 @@ void TIM7_IRQHandler(void)
 		// Motor_CAN_Send_Data(); //发送电机状态数据
 
 		// kth7111_angle = KTH7111_ReadSSIAngle();
-		if (kth7111_flag == 0)
-		{
-			kth7111_angle = KTH7111_ReadAngle();
-			External_pos = kth7111_angle / 65536;
-			kth7111_flag = 1;
-		}
+		// if (kth7111_flag == 0)
+		// {
+		// 	kth7111_angle = KTH7111_ReadAngle();
+		// 	External_pos = kth7111_angle / 65536;
+		// 	kth7111_flag = 1;
+		// }
 
 		// angle_k = (float)kth7111_angle/65535.0f * 360.0f;
 		// IAP CAN升级
