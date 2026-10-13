@@ -31,16 +31,16 @@ void Send_Configuration(void){
 	DeviceFrame.fdata[2] = usart2_baudrate;  //usart2波特率
 	DeviceFrame.fdata[3] = ctrl_config.control_mode;         //控制模式
 	DeviceFrame.fdata[4] = ctrl_config.input_mode;             //输入模式
-	DeviceFrame.fdata[5] = ctrl_config.torque_ramp_rate; //Nm / sec，力矩爬升率
-	DeviceFrame.fdata[6] = ctrl_config.vel_ramp_rate;  //速度的爬升率
+	DeviceFrame.fdata[5] = output_shaft_torque_limit_from_motor(ctrl_config.torque_ramp_rate);
+	DeviceFrame.fdata[6] = output_shaft_motion_limit_from_motor(ctrl_config.vel_ramp_rate);
 	DeviceFrame.fdata[7] = ctrl_config.pos_gain;		//位置P参数
-	DeviceFrame.fdata[8] = ctrl_config.vel_gain;               //速度P参数
-	DeviceFrame.fdata[9] = ctrl_config.vel_integrator_gain;    //速度I参数
-	DeviceFrame.fdata[10] = ctrl_config.vel_limit;          //最大转速限制，圈/秒
+	DeviceFrame.fdata[8] = output_shaft_velocity_gain_from_motor(ctrl_config.vel_gain);
+	DeviceFrame.fdata[9] = output_shaft_velocity_gain_from_motor(ctrl_config.vel_integrator_gain);
+	DeviceFrame.fdata[10] = output_shaft_motion_limit_from_motor(ctrl_config.vel_limit);
 	DeviceFrame.fdata[11] = ctrl_config.input_filter_bandwidth;     // [1/s]
-	DeviceFrame.fdata[12] = trapTraj_config.vel_limit;      //梯形轨迹最大速度; // [turn/s]
-	DeviceFrame.fdata[13] = trapTraj_config.accel_limit;  //梯形轨迹加速度; // [turn/s^2]
-	DeviceFrame.fdata[14] = trapTraj_config.decel_limit;  //梯形轨迹减速度; // [turn/s^2]
+	DeviceFrame.fdata[12] = output_shaft_motion_limit_from_motor(trapTraj_config.vel_limit);
+	DeviceFrame.fdata[13] = output_shaft_motion_limit_from_motor(trapTraj_config.accel_limit);
+	DeviceFrame.fdata[14] = output_shaft_motion_limit_from_motor(trapTraj_config.decel_limit);
 	DeviceFrame.fdata[15] = motor_config.pole_pairs;  //电机极对数
 	DeviceFrame.fdata[16] = motor_config.calibration_current;    // 校准电流[A]
 	DeviceFrame.fdata[17] = motor_config.resistance_calib_max_voltage; // 校准电压[V]
@@ -71,6 +71,7 @@ void Send_Configuration(void){
 void USBcommander_run(void)
 {
 	uint32_t len;
+	float output_value;
 	
 	if(usb_rcv_count != 0)
 	{
@@ -189,7 +190,8 @@ void USBcommander_run(void)
 
 			// 设置速度上限
 			if(strstr((const char *)usb_recbuff, "Motor_Vel_Limit=") != NULL){
-				sscanf((const char *)usb_recbuff, "Motor_Vel_Limit=%f", &ctrl_config.vel_limit); 
+				if (sscanf((const char *)usb_recbuff, "Motor_Vel_Limit=%f", &output_value) == 1)
+					ctrl_config.vel_limit = output_shaft_motion_limit_to_motor(output_value);
 			}
 
 			//设置位置环Kp
@@ -199,12 +201,14 @@ void USBcommander_run(void)
 
 			//设置速度环Kp
 			if(strstr((const char *)usb_recbuff, "Motor_Vel_P=") != NULL){
-				sscanf((const char *)usb_recbuff, "Motor_Vel_P=%f", &ctrl_config.vel_gain); 
+				if (sscanf((const char *)usb_recbuff, "Motor_Vel_P=%f", &output_value) == 1)
+					ctrl_config.vel_gain = output_shaft_velocity_gain_to_motor(output_value);
 			}
 
 			//设置速度环Ki
 			if(strstr((const char *)usb_recbuff, "Motor_Vel_I=") != NULL){
-				sscanf((const char *)usb_recbuff, "Motor_Vel_I=%f", &ctrl_config.vel_integrator_gain); 
+				if (sscanf((const char *)usb_recbuff, "Motor_Vel_I=%f", &output_value) == 1)
+					ctrl_config.vel_integrator_gain = output_shaft_velocity_gain_to_motor(output_value);
 			}
 
 			//设置滤波器带宽
@@ -213,27 +217,32 @@ void USBcommander_run(void)
 			// }
 			// 设置力矩加速度
 			if(strstr((const char *)usb_recbuff, "Motor_Torque_Ramp_Rate=") != NULL){
-				sscanf((const char *)usb_recbuff, "Motor_Torque_Ramp_Rate=%f", &ctrl_config.torque_ramp_rate); 
+				if (sscanf((const char *)usb_recbuff, "Motor_Torque_Ramp_Rate=%f", &output_value) == 1)
+					ctrl_config.torque_ramp_rate = output_shaft_torque_limit_to_motor(output_value);
 			}
 
 			// 设置速度加速度
 			if(strstr((const char *)usb_recbuff, "Motor_Vel_Ramp_Rate=") != NULL){
-				sscanf((const char *)usb_recbuff, "Motor_Vel_Ramp_Rate=%f", &ctrl_config.vel_ramp_rate); 
+				if (sscanf((const char *)usb_recbuff, "Motor_Vel_Ramp_Rate=%f", &output_value) == 1)
+					ctrl_config.vel_ramp_rate = output_shaft_motion_limit_to_motor(output_value);
 			}
 
 			// 设置梯形轨迹最大速度
 			if(strstr((const char *)usb_recbuff, "Traj_Vel_Limit=") != NULL){
-				sscanf((const char *)usb_recbuff, "Traj_Vel_Limit=%f", &trapTraj_config.vel_limit); 
+				if (sscanf((const char *)usb_recbuff, "Traj_Vel_Limit=%f", &output_value) == 1)
+					trapTraj_config.vel_limit = output_shaft_motion_limit_to_motor(output_value);
 			}
 
 			// 设置梯形轨迹加速度
 			if(strstr((const char *)usb_recbuff, "Traj_Accel_Limit=") != NULL){
-				sscanf((const char *)usb_recbuff, "Traj_Accel_Limit=%f", &trapTraj_config.accel_limit); 
+				if (sscanf((const char *)usb_recbuff, "Traj_Accel_Limit=%f", &output_value) == 1)
+					trapTraj_config.accel_limit = output_shaft_motion_limit_to_motor(output_value);
 			}
 
 			// 设置梯形轨迹减速度
 			if(strstr((const char *)usb_recbuff, "Traj_Decel_Limit=") != NULL){
-				sscanf((const char *)usb_recbuff, "Traj_Decel_Limit=%f", &trapTraj_config.decel_limit); 
+				if (sscanf((const char *)usb_recbuff, "Traj_Decel_Limit=%f", &output_value) == 1)
+					trapTraj_config.decel_limit = output_shaft_motion_limit_to_motor(output_value);
 			}
 
 			// 设置电机运行电流最大值
@@ -297,18 +306,20 @@ void USBcommander_run(void)
 
 			// 输入目标力矩
 			if(strstr((const char *)usb_recbuff, "TORQUE=") != NULL){
-				sscanf((const char *)usb_recbuff, "TORQUE=%f", &input_torque_); //设置力矩
+				if (sscanf((const char *)usb_recbuff, "TORQUE=%f", &output_value) == 1)
+					output_shaft_set_input_torque(output_value);
 			}
 
 			// 输入目标速度
 			if(strstr((const char *)usb_recbuff, "VELOCITY=") != NULL){
-				sscanf((const char *)usb_recbuff, "VELOCITY=%f", &input_vel_); //设置速度
+				if (sscanf((const char *)usb_recbuff, "VELOCITY=%f", &output_value) == 1)
+					output_shaft_set_input_velocity(output_value);
 			}
 
 			// 输入目标位置
 			if(strstr((const char *)usb_recbuff, "POSITION=") != NULL){
-				sscanf((const char *)usb_recbuff, "POSITION=%f", &input_pos_); //设置位置
-				input_pos_updated_ = true;  //针对梯形轨迹模式，更新目标位置
+				if (sscanf((const char *)usb_recbuff, "POSITION=%f", &output_value) == 1)
+					output_shaft_set_input_position(output_value);
 			}
 
 			// 向上位机发送当前配置

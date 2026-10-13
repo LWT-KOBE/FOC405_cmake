@@ -65,6 +65,7 @@ extern  bool  meas_induc;
 
 extern  bool  is_armed_;
 extern  bool  is_calibrated_;
+extern  volatile bool dc_calib_valid;
 
 extern  float *motor_torque_setpoint_src_;
 extern  float *motor_phase_vel_src_;

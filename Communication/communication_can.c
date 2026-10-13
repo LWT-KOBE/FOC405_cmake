@@ -7,7 +7,8 @@ void Motor_CAN_Send_Data(void){
     // 发送预测的位置值和速度值
     if(can_cnt % 10 == 0)
     {
-        OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,pos_estimate_,vel_estimate_,&ODSendData);
+        OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,
+                output_shaft_get_position(), output_shaft_get_velocity(), &ODSendData);
         OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_IQ,8,Idq_setpoint_.q,Iq_measured,&ODSendData);
         OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_BUS_VOLTAGE_CURRENT,8,vbus_voltage,Ibus,&ODSendData);
     }

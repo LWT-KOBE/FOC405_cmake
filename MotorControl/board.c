@@ -1,4 +1,3 @@
-
 #include "MyProject.h"
 volatile uint8_t JS_RTT_BufferUp1[2048] = {0,};
 const uint8_t JS_RTT_Channel = 1;
@@ -177,19 +176,31 @@ uint32_t print_flag;
 void control_loop_cb(void)
 {
 	encoder_update();
+	output_shaft_update();
+	output_shaft_apply_inputs();
 	controller_update();
 	openloop_controller_update();
 	motor_update();
 	foc_update();
 	
-	if((motor_error!=0)&&(print_flag==0))
+	if(motor_error != ERROR_NONE)
 	{
-		print_flag=1;  //只打印一次
-		disarm();
+		if (is_armed_)
+		{
+			disarm();
+		}
+		if (print_flag == 0)
+		{
+			print_flag = 1;  //只打印一次
+		}
 		
 		// USART2_SendDMA(sprintf(snd2_buff,"error:0x%X\r\n", motor_error));      //串口打印
 		// uint32_t len=sprintf((char *)usb_sndbuff,"error:0x%X\r\n", motor_error); //虚拟串口打印
 		// usb_send(usb_sndbuff, len);
+	}
+	else
+	{
+		print_flag = 0;
 	}
 }
 /*****************************************************************************/

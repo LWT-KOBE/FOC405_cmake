@@ -1,4 +1,3 @@
-
 #include "MyProject.h"
 
 // 用于霍尔编码器
@@ -17,7 +16,7 @@
 ENCODER_CONFIG   encoder_config;
 
 bool index_found_ = false;   //针对ABZ编码器，Z信号
-bool is_ready_ = false;      //编码器是否准备就绪。电机上电校准后为true。
+volatile bool is_ready_ = false;      //编码器是否准备就绪。电机上电校准后为true。
 int32_t shadow_count_ = 0;   //编码器累计计数。
 int32_t count_in_cpr_ = 0;   //编码器当前计数值。
 float interpolation_ = 0.0f; //编码器当前插补值。
@@ -400,6 +399,7 @@ uint16_t KTH7112_ReadAngle_DMA(void)
 void encoder_zero_position(void)
 {
 	int32_t current_count_in_cpr;
+	output_shaft_invalidate();
 
 	// 1. 先锁存当前单圈位置
 	current_count_in_cpr = count_in_cpr_;
@@ -992,15 +992,9 @@ bool encoder_update(void)
         snap_to_zero_vel = true;
     }
     
-    // 为控制器提供编码器输出
-    // 位置估计（归一化到[0,1)）
+    // Keep the encoder estimate in motor-shaft units for the controller and FOC.
     pos_estimate_ = pos_estimate_counts_ / (float)encoder_config.cpr;
-    // 速度估计（归一化）
     vel_estimate_ = vel_estimate_counts_ / (float)encoder_config.cpr;
-
-#if USE_OUTPUT_SHAFT_GEAR_RATIO
-
-#endif
 
     // 计算循环位置（用于多圈应用）
     // TODO: 应该严格要求这个值来自上一次迭代，以避免失控情况

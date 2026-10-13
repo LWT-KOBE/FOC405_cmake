@@ -38,23 +38,25 @@ void commander_run(void)
 		} break;
 		
 		case 'S': {  //设置力矩 S0.1
-			input_torque_ = atof((const char *)(rcv2_buff+1));
-			USART2_SendDMA(sprintf(snd2_buff,"S=%.2f\r\n", input_torque_));
+			float output_torque = atof((const char *)(rcv2_buff+1));
+			output_shaft_set_input_torque(output_torque);
+			USART2_SendDMA(sprintf(snd2_buff,"S=%.4f\r\n", output_torque));
 		} break;
 		case 'T': {  //设置速度 T10，单位 turn/s
-			input_vel_ = atof((const char *)(rcv2_buff+1));
-			USART2_SendDMA(sprintf(snd2_buff,"T=%.2f\r\n", input_vel_));
+			float output_velocity = atof((const char *)(rcv2_buff+1));
+			output_shaft_set_input_velocity(output_velocity);
+			USART2_SendDMA(sprintf(snd2_buff,"T=%.4f\r\n", output_velocity));
 		} break;
 		case 'K': {  //设置位置 K2，单位 turn
-			input_pos_ = atof((const char *)(rcv2_buff+1));
-			USART2_SendDMA(sprintf(snd2_buff,"K=%.2f\r\n", input_pos_));
-			input_pos_updated_ = true;  //针对梯形轨迹模式，更新目标位置
+			float output_position = atof((const char *)(rcv2_buff+1));
+			output_shaft_set_input_position(output_position);
+			USART2_SendDMA(sprintf(snd2_buff,"K=%.4f\r\n", output_position));
 		} break;
 		case 'V': {  //读取实际速度，单位 turn/s
-			USART2_SendDMA(sprintf(snd2_buff,"vel=%.2f\r\n", vel_estimate_));
+			USART2_SendDMA(sprintf(snd2_buff,"vel=%.4f\r\n", output_shaft_get_velocity()));
 		} break;
 		case 'P': {  //当前绝对位置，单位 turn
-			USART2_SendDMA(sprintf(snd2_buff,"pos=%.2f\r\n", pos_estimate_));
+			USART2_SendDMA(sprintf(snd2_buff,"pos=%.4f\r\n", output_shaft_get_position()));
 		} break;
 		case 'Q': {  //读取错误标志
 			USART2_SendDMA(sprintf(snd2_buff,"error=%X\r\n", motor_error));

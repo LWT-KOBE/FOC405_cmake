@@ -3,7 +3,6 @@
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE    USB_OTG_dev __ALIGN_END ;
 /****************************************************************************/
 uint32_t timecntr_pre=0;
-extern  bool dc_calib_valid;
 void motor_controller_task(void);
 
 void motor_controller_task(void)
@@ -72,7 +71,7 @@ int main(void)
 	controller_para_init();     //配置控制参数
 	anticogging_init();         //抗齿槽参数默认值
 	flash_para_read();          //读取参数
-	if(encoder_config.pre_calibrated && axis_config.startup_closed_loop_control)current_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;  //如果已经校准并且配置上电闭环，设置闭环模式
+	output_shaft_init();
 
 	delay_us(500000);
 	// USBD_Init(&USB_OTG_dev,USB_OTG_FS_CORE_ID,&USR_desc, &USBD_CDC_cb, &USR_cb);  //USB转串口,COM174
@@ -84,7 +83,36 @@ int main(void)
 	 	delay_us(1000);
 	}
 
-	USART2_SendDMA(sprintf(snd2_buff,"Motor Ready!\r\n"));
+	bool output_shaft_ready = false;
+	if (dc_calib_valid && is_ready_ && (motor_error == ERROR_NONE))
+	{
+		// External_pos was sampled before TIM1 starts, so the shaft must stay still during startup.
+#if USE_EXTERNAL_ENCODER
+		output_shaft_ready = output_shaft_capture_power_on_position(External_pos);
+#else
+		output_shaft_ready = output_shaft_capture_power_on_position(OUTPUT_ENCODER_ZERO_OFFSET_TURNS);
+#endif
+	}
+	if (!output_shaft_ready)
+	{
+		if (encoder_config.pre_calibrated && (motor_error == ERROR_NONE))
+		{
+			set_error(ERROR_OUTPUT_SHAFT_NOT_READY);
+		}
+	}
+	else if (encoder_config.pre_calibrated && axis_config.startup_closed_loop_control)
+	{
+		current_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;
+	}
+
+	if (output_shaft_ready)
+	{
+		USART2_SendDMA(sprintf(snd2_buff,"Motor Ready!\r\n"));
+	}
+	else
+	{
+		USART2_SendDMA(sprintf(snd2_buff,"Motor Not Ready!\r\n"));
+	}
 	// 在MyProject.h中设置电机参数和控制模式。参数设置与官方代码一致，请先熟悉官方odrivetool的操作
 
 	DWT_Timer_Init();               //初始化DWT计时器

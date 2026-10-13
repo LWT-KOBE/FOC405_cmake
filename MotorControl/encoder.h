@@ -71,6 +71,7 @@ extern uint32_t pos_val;
 extern  float  pos_estimate_;
 extern  float  vel_estimate_;
 extern  float  pos_circular_;
+extern  volatile bool is_ready_;
 /****************************************************************************/
 void MagneticSensor_Init(void);
 bool run_offset_calibration(void);

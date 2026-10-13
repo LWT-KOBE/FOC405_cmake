@@ -54,7 +54,8 @@ void controller_config_default(void)
 	ctrl_config.vel_ramp_rate = 1.0f;              // [(turn/s) / s]
 	ctrl_config.torque_ramp_rate = 0.01f;          // Nm / sec
 	ctrl_config.circular_setpoints = 0;
-	ctrl_config.circular_setpoint_range = 1.0f;    // Circular range when circular_setpoints is true. [turn]
+	// The controller remains motor-side: one output revolution spans GR motor turns.
+	ctrl_config.circular_setpoint_range = output_shaft_motion_limit_to_motor(1.0f);
 	//ctrl_config.steps_per_circular_range = 1024;
 	ctrl_config.inertia = 0.0f;                    // [Nm/(turn/s^2)]
 	ctrl_config.input_filter_bandwidth = 2.0f;     // [1/s]
@@ -81,11 +82,11 @@ void controller_para_init(void)
 {
 	ctrl_config.control_mode = CONTROL_mode;         //控制模式
 	ctrl_config.input_mode = INPUT_mode;             //输入模式
-	ctrl_config.torque_ramp_rate = TORQUE_ramp_rate; //Nm / sec，力矩爬升率
-	ctrl_config.vel_ramp_rate = VELOCITY_ramp_rate;  //速度的爬升率
-	ctrl_config.vel_gain = VELOCITY_P;               //速度P参数
-	ctrl_config.vel_integrator_gain = VELOCITY_I;    //速度I参数
-	ctrl_config.vel_limit = VELOCITY_limit;          //最大转速限制，圈/秒
+	ctrl_config.torque_ramp_rate = output_shaft_torque_limit_to_motor(TORQUE_ramp_rate);
+	ctrl_config.vel_ramp_rate = output_shaft_motion_limit_to_motor(VELOCITY_ramp_rate);
+	ctrl_config.vel_gain = output_shaft_velocity_gain_to_motor(VELOCITY_P);
+	ctrl_config.vel_integrator_gain = output_shaft_velocity_gain_to_motor(VELOCITY_I);
+	ctrl_config.vel_limit = output_shaft_motion_limit_to_motor(VELOCITY_limit);
 	ctrl_config.pos_gain = POSITION_P;               //位置P参数
 }
 /****************************************************************************/

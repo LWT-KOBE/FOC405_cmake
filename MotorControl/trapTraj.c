@@ -12,9 +12,9 @@ bool s_curve_trajectory_done_ = false;  // �켣��ɱ�־
 /****************************************************************************/
 void trapTraj_config_default(void)
 {
-	trapTraj_config.vel_limit = TRAPTraj_vel_limit;      //2.0f; // [turn/s]
-	trapTraj_config.accel_limit = TRAPTraj_accel_limit;  //0.5f; // [turn/s^2]
-	trapTraj_config.decel_limit = TRAPTraj_decel_limit;  //0.5f; // [turn/s^2]
+	trapTraj_config.vel_limit = output_shaft_motion_limit_to_motor(TRAPTraj_vel_limit);
+	trapTraj_config.accel_limit = output_shaft_motion_limit_to_motor(TRAPTraj_accel_limit);
+	trapTraj_config.decel_limit = output_shaft_motion_limit_to_motor(TRAPTraj_decel_limit);
 }
 
 /****************************************************************************/
@@ -478,10 +478,10 @@ Step_t trap_traj_eval(float t)
 void sCurveTraj_config_default(void)
 {
     // ����Ĭ�ϲ������ɵ�
-    sCurveTraj_config.vel_limit = 20.0f;     // [turn/s]
-    sCurveTraj_config.accel_limit = 2.0f;   // [turn/s^2]
-    sCurveTraj_config.decel_limit = 2.0f;   // [turn/s^2]
-    sCurveTraj_config.jerk_limit = 1.0f;    // [turn/s^3] - S�͹켣���в���
+    sCurveTraj_config.vel_limit = output_shaft_motion_limit_to_motor(SCURVETraj_vel_limit);
+    sCurveTraj_config.accel_limit = output_shaft_motion_limit_to_motor(SCURVETraj_accel_limit);
+    sCurveTraj_config.decel_limit = output_shaft_motion_limit_to_motor(SCURVETraj_decel_limit);
+    sCurveTraj_config.jerk_limit = output_shaft_motion_limit_to_motor(SCURVETraj_jerk_limit);
 }
 
 /****************************************************************************/

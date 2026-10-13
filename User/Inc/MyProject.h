@@ -36,6 +36,7 @@
 #include "motor.h"
 #include "axis.h"
 #include "encoder.h"
+#include "output_shaft.h"
 #include "trapTraj.h"
 #include "controller.h"
 #include "flash_writer.h"
@@ -65,10 +66,34 @@
 #define TIM_APB1_DEADTIME_CLOCKS 40  //50=595ns
 #define TIM_1_8_RCR 2
 
-#define USE_OUTPUT_SHAFT_GEAR_RATIO 0
+#define USE_OUTPUT_SHAFT_GEAR_RATIO 1
 #define USE_EXTERNAL_ENCODER 1
 
-#define GR 42
+// GR = motor-shaft turns / output-shaft turns.
+#define GR 24
+// Direction from the internal motor position coordinate to the output coordinate.
+#define OUTPUT_SHAFT_DIRECTION 1
+// External encoder installation direction and its raw value at mechanical zero.
+#define OUTPUT_ENCODER_DIRECTION 1
+#define OUTPUT_ENCODER_ZERO_OFFSET_TURNS 0.0f
+
+#if (GR <= 0)
+#error "GR must be greater than zero"
+#endif
+
+#if ((OUTPUT_SHAFT_DIRECTION != 1) && (OUTPUT_SHAFT_DIRECTION != -1))
+#error "OUTPUT_SHAFT_DIRECTION must be +1 or -1"
+#endif
+
+#if ((OUTPUT_ENCODER_DIRECTION != 1) && (OUTPUT_ENCODER_DIRECTION != -1))
+#error "OUTPUT_ENCODER_DIRECTION must be +1 or -1"
+#endif
+
+#if USE_OUTPUT_SHAFT_GEAR_RATIO
+#define OUTPUT_SHAFT_RATIO_F ((float)GR)
+#else
+#define OUTPUT_SHAFT_RATIO_F 1.0f
+#endif
 
 
 // Period in [s]
@@ -103,6 +128,7 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 #define  ERROR_SPINOUT_DETECTED                (1<<19)
 #define  ERROR_INVALID_ESTIMATE                (1<<20)
 #define  ERROR_UNKNOWN_PHASE_VEL               (1<<21)
+#define  ERROR_OUTPUT_SHAFT_NOT_READY           (1<<22)
 /****************************************************************************/
 //根据驱动板硬件设置参数
 //#define VBUS_S_DIVIDER_RATIO   18.73f    //电源分压电阻2.2k+39k
@@ -147,16 +173,20 @@ static const int current_meas_hz = CURRENT_MEAS_HZ;
 //控制模式，以下参数请熟练官方ODrive操作后再设置，参数的意义和大小与odrivetool中的设置一致
 #define  CONTROL_mode        CONTROL_MODE_VELOCITY_CONTROL  //控制模式:CONTROL_MODE_VOLTAGE_CONTROL,CONTROL_MODE_TORQUE_CONTROL,CONTROL_MODE_VELOCITY_CONTROL,CONTROL_MODE_POSITION_CONTROL
 #define  INPUT_mode           INPUT_MODE_VEL_RAMP          //输入模式:INPUT_MODE_INACTIVE,INPUT_MODE_PASSTHROUGH,INPUT_MODE_VEL_RAMP,INPUT_MODE_TORQUE_RAMP,INPUT_MODE_POS_FILTER,INPUT_MODE_TRAP_TRAJ,INPUT_MODE_TUNING
-#define  TORQUE_ramp_rate                0.1f               //力矩爬升率，力矩模式起作用
-// #define  VELOCITY_ramp_rate              200                 //加速度，速度模式起作用
-#define  VELOCITY_ramp_rate              20                 //加速度，速度模式起作用
-#define  POSITION_P                      20                 //位置P参数
-#define  VELOCITY_P                      0.04f              //速度P参数
-#define  VELOCITY_I                      0.1f               //速度I参数
-#define  VELOCITY_limit                  40                 //最大速度限制，力矩模式超过限速力矩会下降
-#define  TRAPTraj_vel_limit              40     //梯形轨迹速度限制
-#define  TRAPTraj_accel_limit            20     //梯形轨迹加速加速度
-#define  TRAPTraj_decel_limit            20     //梯形轨迹减速加速度
+// Output-shaft units. These expressions preserve the previous motor-side tuning.
+#define  TORQUE_ramp_rate        (0.1f * OUTPUT_SHAFT_RATIO_F)  // [Nm_out/s]
+#define  VELOCITY_ramp_rate      (20.0f / OUTPUT_SHAFT_RATIO_F) // [turn_out/s^2]
+#define  POSITION_P              20.0f                          // [(turn_out/s)/turn_out]
+#define  VELOCITY_P              (0.04f * OUTPUT_SHAFT_RATIO_F * OUTPUT_SHAFT_RATIO_F)
+#define  VELOCITY_I              (0.1f * OUTPUT_SHAFT_RATIO_F * OUTPUT_SHAFT_RATIO_F)
+#define  VELOCITY_limit          (40.0f / OUTPUT_SHAFT_RATIO_F) // [turn_out/s]
+#define  TRAPTraj_vel_limit      (40.0f / OUTPUT_SHAFT_RATIO_F) // [turn_out/s]
+#define  TRAPTraj_accel_limit    (20.0f / OUTPUT_SHAFT_RATIO_F) // [turn_out/s^2]
+#define  TRAPTraj_decel_limit    (20.0f / OUTPUT_SHAFT_RATIO_F) // [turn_out/s^2]
+#define  SCURVETraj_vel_limit    (20.0f / OUTPUT_SHAFT_RATIO_F) // [turn_out/s]
+#define  SCURVETraj_accel_limit  (2.0f / OUTPUT_SHAFT_RATIO_F)  // [turn_out/s^2]
+#define  SCURVETraj_decel_limit  (2.0f / OUTPUT_SHAFT_RATIO_F)  // [turn_out/s^2]
+#define  SCURVETraj_jerk_limit   (1.0f / OUTPUT_SHAFT_RATIO_F)  // [turn_out/s^3]
 #define  ANTIcogging_pos_threshold       72     //抗齿槽校准时位置允许误差  180/3600=0.05  如遇齿槽效应比较大的电机，可放宽误差
 #define  ANTIcogging_vel_threshold       72     //抗齿槽校准时速度限制  72/3600=0.02
 

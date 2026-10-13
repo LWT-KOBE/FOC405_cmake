@@ -392,12 +392,13 @@ void disarm(void)
 {
 	is_armed_ = 0;
 	TIM_CtrlPWMOutputs(TIM1, DISABLE);  //停止输出
+	output_shaft_reset_inputs();
 	armed_state_ = 0;
 	foc_reset();
 	enqueue_modulation_timings(0.0f, 0.0f); //为下次使能预置零调制
 }
 /****************************************************************************/
-bool dc_calib_valid;
+volatile bool dc_calib_valid;
 /****************************************************************************/
 void current_meas_cb(uint32_t timestamp, Iph_ABC_t *current)
 {

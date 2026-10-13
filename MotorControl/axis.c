@@ -10,13 +10,33 @@ AXIS_CONFIG  axis_config;
 /*****************************************************************************/
 bool start_closed_loop_control(void)
 {
-	controller_pos_estimate_circular_src_ = &pos_circular_;
+	if (motor_error != ERROR_NONE)
+	{
+		return false;
+	}
+
+	if (!dc_calib_valid || !is_ready_ || !output_shaft_is_ready())
+	{
+		set_error(ERROR_OUTPUT_SHAFT_NOT_READY);
+		return false;
+	}
+
+	if (ctrl_config.circular_setpoints &&
+		(!isfinite(ctrl_config.circular_setpoint_range) ||
+		 !(ctrl_config.circular_setpoint_range > 0.0f)))
+	{
+		set_error(ERROR_INVALID_CIRCULAR_RANGE);
+		return false;
+	}
+
+	controller_pos_estimate_circular_src_ = &output_motor_circular_;
 	controller_pos_wrap_src_ = &ctrl_config.circular_setpoint_range;
 	controller_pos_estimate_linear_src_ = &pos_estimate_;
 	controller_vel_estimate_src_ = &vel_estimate_;
 	
 	// To avoid any transient on startup, we intialize the setpoint to be the current position
 	control_mode_updated();
+	output_shaft_start_inputs();
 	input_pos_updated_ = true;
 	// Avoid integrator windup issues
 	vel_integrator_torque_ = 0.0f;
@@ -41,7 +61,10 @@ bool start_closed_loop_control(void)
 /*****************************************************************************/
 bool run_closed_loop_control_loop(void)
 {
-	start_closed_loop_control();
+	if (!start_closed_loop_control())
+	{
+		return false;
+	}
 	// while (is_armed_)
 	//  //{delay_us(1000);}
 	// {delay_us(1000);}
@@ -63,6 +86,8 @@ void run_state_machine_loop(void)
 	switch(current_state_)
 	{
 		case AXIS_STATE_MOTOR_CALIBRATION:{
+			motor_error &= ~ERROR_OUTPUT_SHAFT_NOT_READY;
+			output_shaft_invalidate();
 			status = run_calibration();   //1表示成功，0表示失败
 			
 			// printf("motor R=%.4f,L=%.4e\r\n", motor_config.phase_resistance,motor_config.phase_inductance);  //电感值比较小，采用科学计数法
@@ -81,6 +106,8 @@ void run_state_machine_loop(void)
 		} break;
 		
 		case AXIS_STATE_ENCODER_OFFSET_CALIBRATION: {
+			motor_error &= ~ERROR_OUTPUT_SHAFT_NOT_READY;
+			output_shaft_invalidate();
 			if(!is_calibrated_)goto invalid_state_label;
 			status = run_offset_calibration();
 			

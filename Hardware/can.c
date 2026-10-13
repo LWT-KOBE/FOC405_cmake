@@ -508,8 +508,8 @@ void ODSetVel_gainsData(CanRxMsg* CanRevData) {
 	vel_integrator_gain.u8_temp[3] = CanRevData->Data[7];
 
     // 更新位置环增益
-	ctrl_config.vel_gain = vel_gain.float_temp;
-	ctrl_config.vel_integrator_gain = vel_integrator_gain.float_temp;
+	ctrl_config.vel_gain = output_shaft_velocity_gain_to_motor(vel_gain.float_temp);
+	ctrl_config.vel_integrator_gain = output_shaft_velocity_gain_to_motor(vel_integrator_gain.float_temp);
 }
 
 void OD_MSG_SET_CONTROLLER_MODES(CanRxMsg* CanRevData)
@@ -568,9 +568,8 @@ void OD_SET_INPUT_POS(CanRxMsg* CanRevData) {
     float new_pos;
     memcpy(&new_pos, CanRevData->Data, sizeof(float));
 
-	// 更新输入位置
-	input_pos_ = new_pos;
-	input_pos_updated_ = true;  //针对梯形轨迹模式，更新目标位置
+	// CAN position commands use output-shaft turns.
+	output_shaft_set_input_position(new_pos);
 }
 
 // 机制科技中空编码器
@@ -602,8 +601,8 @@ void OD_SET_INPUT_VEL(CanRxMsg* CanRevData) {
     float new_vel;
     memcpy(&new_vel, CanRevData->Data, sizeof(float));
 
-	// 更新输入速度
-	input_vel_ = new_vel;
+	// CAN velocity commands use output-shaft turns/s.
+	output_shaft_set_input_velocity(new_vel);
 }
 
 
@@ -612,8 +611,8 @@ void OD_SET_INPUT_CUR(CanRxMsg* CanRevData) {
     float new_cur;
     memcpy(&new_cur, CanRevData->Data, sizeof(float));
 
-	// 更新输入电流
-	input_torque_ = new_cur;
+	// This command carries output-shaft torque in Nm, despite the legacy name.
+	output_shaft_set_input_torque(new_cur);
 }
 
 void OD_SET_INPUT_LIMITS(CanRxMsg* CanRevData) {
@@ -624,7 +623,7 @@ void OD_SET_INPUT_LIMITS(CanRxMsg* CanRevData) {
 	// 更新电流最大值
 	motor_config.current_lim = cur_limit;
 	// 更新速度最大值
-	ctrl_config.vel_limit = vel_limit;
+	ctrl_config.vel_limit = output_shaft_motion_limit_to_motor(vel_limit);
 }
 
 void OD_SET_TRAPTRAJ_VEL_LIMIT(CanRxMsg* CanRevData)
@@ -632,7 +631,7 @@ void OD_SET_TRAPTRAJ_VEL_LIMIT(CanRxMsg* CanRevData)
 	float traptraj_vel_limits;
 	memcpy(&traptraj_vel_limits, CanRevData->Data, sizeof(float));
 
-	trapTraj_config.vel_limit = traptraj_vel_limits;
+	trapTraj_config.vel_limit = output_shaft_motion_limit_to_motor(traptraj_vel_limits);
 }
 
 void OD_SET_TRAPTRAJ_ACCELS(CanRxMsg* CanRevData)
@@ -641,8 +640,8 @@ void OD_SET_TRAPTRAJ_ACCELS(CanRxMsg* CanRevData)
 	memcpy(&traptraj_accel_limits, CanRevData->Data, sizeof(float));
 
 	memcpy(&traptraj_decel_limits, CanRevData->Data + sizeof(float), sizeof(float));
-	trapTraj_config.accel_limit = traptraj_accel_limits;
-	trapTraj_config.decel_limit = traptraj_decel_limits;
+	trapTraj_config.accel_limit = output_shaft_motion_limit_to_motor(traptraj_accel_limits);
+	trapTraj_config.decel_limit = output_shaft_motion_limit_to_motor(traptraj_decel_limits);
 }
 
 
@@ -735,25 +734,38 @@ static void set_mit_control_cmd(CanRxMsg* CanRevData)
     // 示例：cmd_data[6]=0x34, cmd_data[7]=0x56 → t_int = (0x400) | 0x56 = 0x456
     int t_int = ((CanRevData->Data[6] & 0xF) << 8) | CanRevData->Data[7];
 
+    // Preserve the legacy motor-side encoded ranges while exposing output-shaft units.
+    const float output_position_limit = output_shaft_motion_limit_from_motor(20000.0f);
+    const float output_velocity_limit = output_shaft_motion_limit_from_motor(2000.0f);
+    const float output_gain_limit = output_shaft_velocity_gain_from_motor(200.0f);
+    const float output_torque_limit = output_shaft_torque_limit_from_motor(20.0f);
+
     // ==============================================
     // 2. 将整数转换为实际的物理量浮点值
     // ==============================================
 
     // 转换位置命令：16位整数 → 浮点位置值（单位：弧度或度）
     // uint_to_float参数：整数，最小值，最大值，位数
-    mit_target_pos_ = uint_to_float(p_int, -20000, 20000, 16);
+	float output_position = uint_to_float(
+		p_int, -output_position_limit, output_position_limit, 16);
 
     // 转换速度命令：12位整数 → 浮点速度值（单位：rad/s或RPM）
-    mit_target_velocity_ = uint_to_float(v_int, -2000, 2000, 12);
+	float output_velocity = uint_to_float(
+		v_int, -output_velocity_limit, output_velocity_limit, 12);
 
     // 转换比例系数：12位整数 → 浮点比例增益
-    mit_kp = uint_to_float(kp_int, -200, 200, 12);
+	float output_kp = uint_to_float(
+		kp_int, -output_gain_limit, output_gain_limit, 12);
 
     // 转换微分系数：12位整数 → 浮点微分增益
-    mit_kd = uint_to_float(kd_int, -200, 200, 12);
+	float output_kd = uint_to_float(
+		kd_int, -output_gain_limit, output_gain_limit, 12);
 
     // 转换扭矩命令：12位整数 → 浮点扭矩值（单位：Nm）
-    mit_target_torque_ = uint_to_float(t_int, -20, 20, 12);
+	float output_torque = uint_to_float(
+		t_int, -output_torque_limit, output_torque_limit, 12);
+	output_shaft_set_mit_command(output_position, output_velocity,
+		output_torque, output_kp, output_kd);
 }
 
 
@@ -862,7 +874,8 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_GET_ENCODER_ESTIMATES:
 						if (can_is_query_request(&can1_rx_msg)) {
-							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,pos_estimate_,vel_estimate_,&ODSendData);
+							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_ENCODER_ESTIMATES,8,
+								output_shaft_get_position(), output_shaft_get_velocity(), &ODSendData);
 						}
 						break;
 
@@ -962,14 +975,17 @@ void CAN1_RX0_IRQHandler(void){
 
 					case MSG_GET_POS_GAIN:
 						if (can_is_query_request(&can1_rx_msg)) {
-							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_POS_GAIN,8,ctrl_config.pos_gain,ctrl_config.vel_limit,&ODSendData);
+							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_POS_GAIN,8,ctrl_config.pos_gain,
+								output_shaft_motion_limit_from_motor(ctrl_config.vel_limit),&ODSendData);
 						}
 
 						break;
 
 					case MSG_GET_VEL_GAINS:
 						if (can_is_query_request(&can1_rx_msg)) {
-							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_VEL_GAINS,8,ctrl_config.vel_gain,ctrl_config.vel_integrator_gain,&ODSendData);
+							OD_CANSendData_2(CAN1,OD_CANID,MSG_GET_VEL_GAINS,8,
+								output_shaft_velocity_gain_from_motor(ctrl_config.vel_gain),
+								output_shaft_velocity_gain_from_motor(ctrl_config.vel_integrator_gain),&ODSendData);
 						}
 
 						break;
